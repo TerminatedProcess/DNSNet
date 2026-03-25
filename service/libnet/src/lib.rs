@@ -8,6 +8,7 @@
 
  #![feature(portable_simd)]
 
+pub mod ai_classifier;
 pub mod backend;
 pub mod cache;
 pub mod controller;
