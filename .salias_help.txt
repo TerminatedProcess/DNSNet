@@ -1,0 +1,37 @@
+DNSAI (DNSNet fork) - AI-Powered DNS Threat Intelligence
+=========================================================
+
+HELP
+  help              Show this help text
+
+BUILD
+  build             Debug build (Gradle + Rust)
+  buildrelease      Release build
+  clean             Clean build artifacts
+  rebuild           Clean + debug build
+  buildrust         Build Rust libs only
+
+DEPLOY
+  deploy            Build + install to phone
+  install           Install last-built APK
+  reinstall         Re-install (keep data)
+  uninstall         Remove app from phone
+  rr                Rebuild + install (quick combo)
+
+DEVICE
+  devices           List connected devices
+  mirror            Launch scrcpy
+  logcat            Filtered app logs (VPN, rules, filter)
+  logcatall         All logs mentioning app
+  cleardata         Wipe app data on phone
+
+APK INFO
+  apkpath           Print APK file path
+  apksize           Show APK file size
+
+TOOLCHAIN
+  checkenv          Verify Java, Rust, NDK, SDK setup
+
+GRADLE
+  tasks             List build-related Gradle tasks
+  deps              Show app runtime dependencies

@@ -16,6 +16,7 @@ use std::{
 
 use mio::{Events, Interest, Poll, Token, unix::SourceFd};
 use net::{
+    ai_classifier::AiClassifier,
     backend::{
         DnsBackend, DnsResponseHandler, DnsServer, SocketProtector,
         doh3::{DoH3Backend, DoH3BackendError},
@@ -372,10 +373,32 @@ impl Vpn {
             Some(ref value) => Some(Box::from(value as &dyn BlockLogger)),
             None => None,
         };
+
+        // Load AI classifier model from Android assets
+        let ai_classifier = match file_helper.get_ai_model_data() {
+            Some(model_data) => {
+                match AiClassifier::from_bytes(&model_data, 0.5) {
+                    Ok(classifier) => {
+                        info!("run: AI classifier loaded successfully");
+                        Some(Arc::new(classifier))
+                    }
+                    Err(e) => {
+                        error!("run: Failed to load AI classifier: {}", e);
+                        None
+                    }
+                }
+            }
+            None => {
+                info!("run: No AI model available, running without AI classification");
+                None
+            }
+        };
+
         let mut dns_packet_proxy = DnsPacketProxy::new(
             &socket_protector,
             block_logger,
             rule_database,
+            ai_classifier,
             dns_servers
                 .iter()
                 .filter_map(|container| match &container.server {

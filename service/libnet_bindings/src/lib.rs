@@ -126,6 +126,8 @@ impl SocketProtector for Box<dyn VpnCallback> {
 pub trait FileHelperBinding {
     fn get_fd(&self, path: String) -> Option<i32>;
     fn get_dns_cache_file_fd(&self) -> Option<i32>;
+    /// Returns the AI classifier model binary data, or None if unavailable
+    fn get_ai_model_data(&self) -> Option<Vec<u8>>;
 }
 
 impl FileHelper for &Box<dyn FileHelperBinding> {

@@ -23,4 +23,11 @@ class NativeFileHelperWrapper(private val context: Context) : FileHelperBinding 
             path = File(context.externalCacheDir, "dnscache.blob").absolutePath,
             mode = ParcelFileDescriptor.MODE_READ_WRITE
         )
+
+    override fun getAiModelData(): ByteArray? =
+        try {
+            context.assets.open("dga_classifier.bin").use { it.readBytes() }
+        } catch (e: Exception) {
+            null
+        }
 }

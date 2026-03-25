@@ -14,6 +14,7 @@ use simple_dns::{Name, PacketFlag, ResourceRecord, rdata::RData};
 use log::{debug, error, info, warn};
 
 use crate::{
+    ai_classifier::AiClassifier,
     backend::{DnsBackend, DnsBackendError, DnsResponseHandler, SocketProtector},
     database::RuleDatabase,
     log::BlockLogger,
@@ -22,10 +23,12 @@ use crate::{
 };
 
 /// Handler for DNS packets that accepts or blocks them based on our [RuleDatabase]
+/// and optionally an AI classifier for DGA detection
 pub struct DnsPacketProxy<'a> {
     socket_protector: &'a Box<&'a dyn SocketProtector>,
     block_logger: Option<Box<&'a dyn BlockLogger>>,
     rule_database: Arc<dyn RuleDatabase>,
+    ai_classifier: Option<Arc<AiClassifier>>,
     upstream_dns_servers: Vec<Vec<u8>>,
     negative_cache_record: ResourceRecord<'a>,
 }
@@ -38,6 +41,7 @@ impl<'a> DnsPacketProxy<'a> {
         socket_protector: &'a Box<&'a dyn SocketProtector>,
         block_logger_callback: Option<Box<&'a dyn BlockLogger>>,
         rule_database: Arc<dyn RuleDatabase>,
+        ai_classifier: Option<Arc<AiClassifier>>,
         upstream_dns_servers: Vec<Vec<u8>>,
     ) -> Self {
         let name = match Name::new(Self::INVALID_HOST_NAME) {
@@ -65,6 +69,7 @@ impl<'a> DnsPacketProxy<'a> {
             socket_protector,
             block_logger: block_logger_callback,
             rule_database,
+            ai_classifier,
             upstream_dns_servers,
             negative_cache_record,
         }
@@ -146,7 +151,35 @@ impl<'a> DnsPacketProxy<'a> {
             .qname
             .to_string()
             .to_lowercase();
-        if !self.rule_database.is_blocked(&dns_query_name) {
+        let blocked_by_list = self.rule_database.is_blocked(&dns_query_name);
+
+        // AI classification: if not blocked by static list, check with AI classifier
+        let blocked_by_ai = if !blocked_by_list {
+            if let Some(ref classifier) = self.ai_classifier {
+                if let Some(result) = classifier.classify(&dns_query_name) {
+                    if result.is_dga {
+                        info!(
+                            "handle_dns_request: AI blocked {} (DGA probability: {:.1}%)",
+                            dns_query_name,
+                            result.dga_probability * 100.0
+                        );
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        let is_blocked = blocked_by_list || blocked_by_ai;
+
+        if !is_blocked {
             info!(
                 "handle_dns_request: DNS Name {} allowed. Sending to {:?}",
                 dns_query_name,
@@ -156,11 +189,6 @@ impl<'a> DnsPacketProxy<'a> {
             if let Some(block_logger) = &self.block_logger {
                 block_logger.log(dns_query_name.clone(), true);
             }
-
-            // if let Some(cached_response) = dns_cache.get_packet(dns_packet) {
-            //     ad_vpn.handle_dns_response(Some(dns_cache), packet_data, &cached_response);
-            //     return Ok(());
-            // }
 
             if let Err(error) = backend.forward_packet(
                 self.socket_protector,
@@ -176,7 +204,8 @@ impl<'a> DnsPacketProxy<'a> {
                 }
             }
         } else {
-            info!("handle_dns_request: DNS Name {} blocked!", dns_query_name);
+            let source = if blocked_by_ai { "AI" } else { "blocklist" };
+            info!("handle_dns_request: DNS Name {} blocked by {}!", dns_query_name, source);
 
             if let Some(block_logger) = &self.block_logger {
                 block_logger.log(dns_query_name.clone(), false);

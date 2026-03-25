@@ -1,0 +1,116 @@
+# DNSAI (DNSNet fork) - AI-Powered DNS Threat Intelligence
+# All commands defined here, sourced by .salias
+# Run 'help' to see all available commands
+
+set -gx JAVA_HOME /usr/lib/jvm/java-21-openjdk
+set -gx ANDROID_HOME $HOME/Android/Sdk
+set -gx ANDROID_NDK_HOME $ANDROID_HOME/ndk/29.0.14206865
+set -gx PATH $ANDROID_HOME/platform-tools $ANDROID_HOME/cmdline-tools/latest/bin $PATH
+
+# ── Help ──
+alias help='clear; cat /home/dev/work/dnsai/DNSNet/.salias_help.txt'
+
+# ── Build ──
+function build
+    ./gradlew assembleDebug
+end
+
+function buildrelease
+    ./gradlew assembleRelease
+end
+
+function clean
+    ./gradlew clean
+end
+
+function rebuild
+    ./gradlew clean assembleDebug
+end
+
+function buildrust
+    cd /home/dev/work/dnsai/DNSNet/service && cargo build --release && cd -
+end
+
+# ── Install / Deploy ──
+function deploy
+    build
+    and adb install app/build/outputs/apk/debug/app-debug.apk
+end
+
+function install
+    adb install app/build/outputs/apk/debug/app-debug.apk
+end
+
+function reinstall
+    adb install -r app/build/outputs/apk/debug/app-debug.apk
+end
+
+function uninstall
+    adb uninstall dev.clombardo.dnsnet.debug
+end
+
+# ── Device ──
+function devices
+    adb devices -l
+end
+
+function mirror
+    scrcpy
+end
+
+function logcat
+    adb logcat -s "DnsNetVpnService:*" "VpnThread:*" "RuleDatabaseManager:*" "FilterUtil:*" "AndroidRuntime:*" | grep -i --color=auto "dnsnet\|vpn\|rule\|filter\|FATAL\|Exception"
+end
+
+function logcatall
+    adb logcat | grep -i --color=auto "dnsnet\|clombardo"
+end
+
+function cleardata
+    adb shell pm clear dev.clombardo.dnsnet.debug
+end
+
+# ── Quick combos ──
+function rr
+    rebuild
+    and adb install app/build/outputs/apk/debug/app-debug.apk
+end
+
+function apkpath
+    echo (pwd)/app/build/outputs/apk/debug/app-debug.apk
+end
+
+function apksize
+    ls -lh app/build/outputs/apk/debug/app-debug.apk 2>/dev/null
+    or echo "APK not built yet. Run 'build' first."
+end
+
+# ── Toolchain checks ──
+function checkenv
+    echo "== Java =="
+    java -version 2>&1 | head -1
+    echo ""
+    echo "== Rust =="
+    rustc --version 2>/dev/null; or echo "NOT INSTALLED - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+    echo ""
+    echo "== Android targets =="
+    rustup target list --installed 2>/dev/null; or echo "No rust targets"
+    echo ""
+    echo "== NDK =="
+    ls $ANDROID_HOME/ndk/ 2>/dev/null; or echo "NOT INSTALLED"
+    echo ""
+    echo "== SDK Platforms =="
+    ls $ANDROID_HOME/platforms/ 2>/dev/null
+    echo ""
+    echo "== Build Tools =="
+    ls $ANDROID_HOME/build-tools/ 2>/dev/null
+end
+
+# ── Gradle helpers ──
+function tasks
+    ./gradlew tasks --all 2>/dev/null | grep -i "assemble\|install\|build\|test\|lint"
+end
+
+function deps
+    ./gradlew :app:dependencies --configuration debugRuntimeClasspath 2>/dev/null | head -80
+end
