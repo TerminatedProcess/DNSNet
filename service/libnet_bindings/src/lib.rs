@@ -23,7 +23,7 @@ use android_logger::Config;
 use database::RuleDatabaseBinding;
 use log::{LevelFilter, debug, error, info};
 use mio::net::UdpSocket;
-use net::{backend::SocketProtector, file::FileHelper, log::BlockLogger};
+use net::{backend::SocketProtector, file::FileHelper, log::{BlockLogger, BlockSource}};
 use vpn::{Vpn, VpnConfigurationResult, VpnResultBinding};
 
 use crate::{
@@ -141,10 +141,36 @@ impl FileHelper for &Box<dyn FileHelperBinding> {
 #[uniffi::export(callback_interface)]
 pub trait BlockLoggerBinding: Send + Sync {
     fn log_connection(&self, connection_name: String, allowed: bool);
+
+    /// Extended log with AI classification data
+    /// block_source: "none", "blocklist", or "ai"
+    /// ai_confidence: 0.0-1.0 DGA probability (0.0 if not AI-classified)
+    fn log_connection_with_ai(
+        &self,
+        connection_name: String,
+        allowed: bool,
+        block_source: String,
+        ai_confidence: f32,
+    );
 }
 
 impl BlockLogger for Box<dyn BlockLoggerBinding> {
     fn log(&self, connection_name: String, allowed: bool) {
         self.log_connection(connection_name, allowed);
+    }
+
+    fn log_with_ai(
+        &self,
+        connection_name: String,
+        allowed: bool,
+        block_source: BlockSource,
+        ai_confidence: f32,
+    ) {
+        let source_str = match block_source {
+            BlockSource::Blocklist => "blocklist",
+            BlockSource::Ai => "ai",
+            BlockSource::None => "none",
+        };
+        self.log_connection_with_ai(connection_name, allowed, source_str.to_string(), ai_confidence);
     }
 }

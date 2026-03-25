@@ -28,17 +28,23 @@ data class BlockLogger(val connections: MutableMap<String, LoggedConnection> = H
     }
 
     fun newConnection(name: String, allowed: Boolean) {
+        newConnectionWithAi(name, allowed, "none", 0f)
+    }
+
+    fun newConnectionWithAi(name: String, allowed: Boolean, blockSource: String, aiConfidence: Float) {
         val connection = connections[name]
         val now = System.currentTimeMillis()
         if (connection != null) {
             if (connection.allowed != allowed) {
                 connections.remove(name)
-                connections[name] = LoggedConnection(allowed, 1, now)
+                connections[name] = LoggedConnection(allowed, 1, now, blockSource, aiConfidence)
             } else {
                 connection.attempt(now)
+                connection.blockSource = blockSource
+                connection.aiConfidence = aiConfidence
             }
         } else {
-            connections[name] = LoggedConnection(allowed, 1, now)
+            connections[name] = LoggedConnection(allowed, 1, now, blockSource, aiConfidence)
         }
         onConnection?.invoke(name, connections[name]!!)
     }
@@ -86,6 +92,8 @@ data class LoggedConnection(
     val allowed: Boolean = true,
     var attempts: Long = 0,
     var lastAttemptTime: Long = 0,
+    var blockSource: String = "none",
+    var aiConfidence: Float = 0f,
 ) {
     fun attempt(now: Long) {
         attempts++

@@ -14,4 +14,11 @@ import uniffi.net_bindings.BlockLoggerBinding
 class NativeBlockLoggerWrapper(private val logger: BlockLogger): BlockLoggerBinding {
     override fun logConnection(connectionName: String, allowed: Boolean) =
         logger.newConnection(connectionName, allowed)
+
+    override fun logConnectionWithAi(
+        connectionName: String,
+        allowed: Boolean,
+        blockSource: String,
+        aiConfidence: Float,
+    ) = logger.newConnectionWithAi(connectionName, allowed, blockSource, aiConfidence)
 }
