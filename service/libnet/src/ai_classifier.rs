@@ -119,8 +119,6 @@ impl AiClassifier {
                 let right_child = read_i32(data, &mut offset);
                 let is_leaf = data[offset] != 0;
                 offset += 1;
-                // Padding byte from struct packing
-                offset += 3;
                 let weight = read_f32(data, &mut offset);
                 nodes.push(TreeNode {
                     split_index,
@@ -396,5 +394,34 @@ mod tests {
         assert_eq!(longest_sequence(b"aeiou", b"aeiou"), 5);
         assert_eq!(longest_sequence(b"bcdfg", b"aeiou"), 0);
         assert_eq!(longest_sequence(b"abcde", b"bcd"), 3);
+    }
+
+    #[test]
+    fn test_load_and_classify() {
+        let model_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent().unwrap()
+            .join("src/main/assets/dga_classifier.bin");
+        if !model_path.exists() {
+            eprintln!("Model file not found at {:?}, skipping", model_path);
+            return;
+        }
+        let data = std::fs::read(&model_path).unwrap();
+        let classifier = AiClassifier::from_bytes(&data, 0.5).unwrap();
+
+        // Legit domains should not be flagged
+        let result = classifier.classify("google.com").unwrap();
+        assert!(!result.is_dga, "google.com flagged as DGA: {:.2}%", result.dga_probability * 100.0);
+
+        let result = classifier.classify("github.com").unwrap();
+        assert!(!result.is_dga, "github.com flagged as DGA: {:.2}%", result.dga_probability * 100.0);
+
+        // Long random domains should be flagged
+        let result = classifier.classify("cvyh1po636avyrsxebwbkn7.ddns.net").unwrap();
+        assert!(result.is_dga, "Known DGA not detected: {:.2}%", result.dga_probability * 100.0);
+
+        let result = classifier.classify("qweasdzxcrtyfghvbn.com").unwrap();
+        assert!(result.is_dga, "Keyboard-walk DGA not detected: {:.2}%", result.dga_probability * 100.0);
+
+        eprintln!("AI classifier test passed!");
     }
 }
