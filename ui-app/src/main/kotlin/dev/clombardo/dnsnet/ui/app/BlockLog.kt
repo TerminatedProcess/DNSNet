@@ -90,6 +90,8 @@ data class LoggedConnectionState(
     val allowed: Boolean,
     var attempts: Long,
     var lastAttemptTime: Long,
+    val blockSource: String = "none",
+    val aiConfidence: Float = 0f,
 ) : Parcelable
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -119,6 +121,8 @@ fun BlockLog(
                         allowed = it.value.allowed,
                         attempts = it.value.attempts,
                         lastAttemptTime = it.value.lastAttemptTime,
+                        blockSource = it.value.blockSource,
+                        aiConfidence = it.value.aiConfidence,
                     )
                 }
             )
@@ -230,10 +234,16 @@ fun BlockLog(
             items = adjustedList,
             key = { it.hostname },
         ) {
+            val detailText = when {
+                it.blockSource == "ai" -> "Blocked by AI (${(it.aiConfidence * 100).toInt()}% DGA)"
+                !it.allowed -> blockedString
+                it.aiConfidence > 0f -> "$allowedString (AI: ${(it.aiConfidence * 100).toInt()}%)"
+                else -> allowedString
+            }
             ContentSetting(
                 modifier = Modifier.animateItem(),
                 title = it.hostname,
-                details = if (it.allowed) allowedString else blockedString,
+                details = detailText,
                 endContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         val abbreviatedAttempts = NumberFormatterCompat.formatCompact(it.attempts)
@@ -366,8 +376,9 @@ fun BlockLogScreenPreview() {
         onNavigateUp = {},
         listViewModel = viewModel(),
         loggedConnections = mapOf(
-            "some.blocked.server" to LoggedConnection(false, 1, 0),
-            "some.allowed.server" to LoggedConnection(false, 1, 0),
+            "some.blocked.server" to LoggedConnection(false, 1, 0, "blocklist"),
+            "dga.suspicious.domain" to LoggedConnection(false, 1, 0, "ai", 0.95f),
+            "some.allowed.server" to LoggedConnection(true, 1, 0),
         ),
         onCreateException = {},
     )
