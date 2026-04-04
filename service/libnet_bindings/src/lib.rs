@@ -145,7 +145,7 @@ pub trait BlockLoggerBinding: Send + Sync {
     fn log_connection(&self, connection_name: String, allowed: bool);
 
     /// Extended log with AI classification data
-    /// block_source: "none", "blocklist", or "ai"
+    /// block_source: "none", "blocklist", "ai", "tunneling", "tracker", or "beaconing"
     /// ai_confidence: 0.0-1.0 DGA probability (0.0 if not AI-classified)
     fn log_connection_with_ai(
         &self,
@@ -171,6 +171,9 @@ impl BlockLogger for Box<dyn BlockLoggerBinding> {
         let source_str = match block_source {
             BlockSource::Blocklist => "blocklist",
             BlockSource::Ai => "ai",
+            BlockSource::Tunneling => "tunneling",
+            BlockSource::Tracker => "tracker",
+            BlockSource::Beaconing => "beaconing",
             BlockSource::None => "none",
         };
         self.log_connection_with_ai(connection_name, allowed, source_str.to_string(), ai_confidence);

@@ -1,11 +1,17 @@
-/// Source of a blocking decision
+/// Source of a blocking or flagging decision
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BlockSource {
     /// Domain was on a static blocklist
     Blocklist,
-    /// Domain was flagged by the AI classifier
+    /// Domain was flagged by the AI DGA classifier
     Ai,
-    /// Domain was not blocked
+    /// Domain was flagged as DNS tunneling
+    Tunneling,
+    /// Domain matched a known tracker
+    Tracker,
+    /// Domain is beaconing (high-frequency queries)
+    Beaconing,
+    /// Domain was not blocked or flagged
     None,
 }
 

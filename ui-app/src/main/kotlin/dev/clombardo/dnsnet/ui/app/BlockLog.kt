@@ -236,6 +236,9 @@ fun BlockLog(
         ) {
             val detailText = when {
                 it.blockSource == "ai" -> "Blocked by AI (${(it.aiConfidence * 100).toInt()}% DGA)"
+                it.blockSource == "tunneling" -> "Blocked: DNS Tunneling"
+                it.blockSource == "tracker" -> "\u26A0 Known tracker"
+                it.blockSource == "beaconing" -> "\u26A0 Beaconing detected"
                 !it.allowed -> blockedString
                 it.aiConfidence > 0f -> "$allowedString (AI: ${(it.aiConfidence * 100).toInt()}%)"
                 else -> allowedString

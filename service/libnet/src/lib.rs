@@ -10,6 +10,7 @@
 
 pub mod ai_classifier;
 pub mod backend;
+pub mod beaconing_detector;
 pub mod cache;
 pub mod controller;
 pub mod database;
@@ -17,5 +18,7 @@ pub mod file;
 pub mod log;
 pub mod packet;
 pub mod proxy;
+pub mod tracker_list;
+pub mod tunneling_detector;
 mod util;
 pub mod vpn;
