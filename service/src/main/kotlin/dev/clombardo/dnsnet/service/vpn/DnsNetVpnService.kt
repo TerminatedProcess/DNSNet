@@ -578,6 +578,7 @@ class DnsNetVpnService : VpnService(), Handler.Callback, VpnCallback {
             ruleDatabaseManager = ruleDatabaseManager,
             context = applicationContext,
             isDoh3 = configuration.read { dnsServers.type == DnsServerType.DoH3 },
+            isAiEnabled = configuration.read { aiEnabled },
         )
     }
 

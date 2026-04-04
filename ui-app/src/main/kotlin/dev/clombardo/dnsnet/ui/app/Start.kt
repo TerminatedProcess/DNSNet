@@ -79,6 +79,8 @@ fun StartScreen(
     blockLog: Boolean,
     onToggleBlockLog: () -> Unit,
     onOpenBlockLog: () -> Unit,
+    aiEnabled: Boolean,
+    onToggleAi: () -> Unit,
     onImport: () -> Unit,
     onExport: () -> Unit,
     isWritingLogcat: Boolean,
@@ -114,6 +116,15 @@ fun StartScreen(
                             details = stringResource(id = R.string.switch_onboot_description),
                             checked = resumeOnStartup,
                             onCheckedChange = { onResumeOnStartupClick() },
+                        )
+                    }
+
+                    item {
+                        SwitchListItem(
+                            title = stringResource(id = R.string.ai_classification),
+                            details = stringResource(id = R.string.ai_classification_description),
+                            checked = aiEnabled,
+                            onCheckedChange = { onToggleAi() },
                         )
                     }
 
@@ -254,6 +265,8 @@ private fun StartScreenPreview() {
             blockLog = true,
             onToggleBlockLog = {},
             onOpenBlockLog = {},
+            aiEnabled = true,
+            onToggleAi = {},
             onImport = {},
             onExport = {},
             isWritingLogcat = false,

@@ -115,6 +115,7 @@ data class Configuration(
     var ipV6Support: Boolean = true,
     var blockLogging: Boolean = false,
     var useNetworkDnsServers: Boolean = false,
+    var aiEnabled: Boolean = true,
 ) {
     companion object {
         const val DEFAULT_CONFIG_FILENAME = "settings.json"

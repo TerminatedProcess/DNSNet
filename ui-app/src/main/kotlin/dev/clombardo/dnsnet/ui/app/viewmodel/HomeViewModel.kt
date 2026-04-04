@@ -391,6 +391,11 @@ class HomeViewModel @AssistedInject constructor(
         _showDeleteFilterWarningDialog.value = false
     }
 
+    fun onToggleAi() {
+        settings.aiEnabled.set(!settings.aiEnabled.get())
+        onReloadVpn()
+    }
+
     fun onEnableBlockLog() {
         settings.blockLogging.set(true)
         onReloadVpn()

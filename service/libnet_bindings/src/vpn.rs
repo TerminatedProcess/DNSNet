@@ -294,6 +294,7 @@ impl Vpn {
         rule_database: Arc<RuleDatabaseBinding>,
         file_helper: Box<dyn FileHelperBinding>,
         is_doh3: bool,
+        is_ai_enabled: bool,
     ) -> Result<VpnResultBinding, VpnErrorBinding> {
         let mut packet = vec![0u8; i16::MAX as usize];
 
@@ -374,24 +375,29 @@ impl Vpn {
             None => None,
         };
 
-        // Load AI classifier model from Android assets
-        let ai_classifier = match file_helper.get_ai_model_data() {
-            Some(model_data) => {
-                match AiClassifier::from_bytes(&model_data, 0.5) {
-                    Ok(classifier) => {
-                        info!("run: AI classifier loaded successfully");
-                        Some(Arc::new(classifier))
-                    }
-                    Err(e) => {
-                        error!("run: Failed to load AI classifier: {}", e);
-                        None
+        // Load AI classifier model from Android assets (if enabled)
+        let ai_classifier = if is_ai_enabled {
+            match file_helper.get_ai_model_data() {
+                Some(model_data) => {
+                    match AiClassifier::from_bytes(&model_data, 0.5) {
+                        Ok(classifier) => {
+                            info!("run: AI classifier loaded successfully");
+                            Some(Arc::new(classifier))
+                        }
+                        Err(e) => {
+                            error!("run: Failed to load AI classifier: {}", e);
+                            None
+                        }
                     }
                 }
+                None => {
+                    info!("run: No AI model available, running without AI classification");
+                    None
+                }
             }
-            None => {
-                info!("run: No AI model available, running without AI classification");
-                None
-            }
+        } else {
+            info!("run: AI classification disabled by user");
+            None
         };
 
         let mut dns_packet_proxy = DnsPacketProxy::new(

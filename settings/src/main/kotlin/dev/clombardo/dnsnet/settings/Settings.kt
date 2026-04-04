@@ -286,6 +286,14 @@ class Settings @Inject constructor(
             }
     }
 
+    val aiEnabled = object : Setting<Boolean>() {
+        override var value: Boolean
+            get() = configuration.read { aiEnabled }
+            set(value) {
+                configuration.edit { aiEnabled = value }
+            }
+    }
+
     private fun resetState() {
         autoStart.reset()
         filters.reset()
@@ -293,6 +301,7 @@ class Settings @Inject constructor(
         appList.reset()
         blockLogging.reset()
         useNetworkDnsServers.reset()
+        aiEnabled.reset()
     }
 
     suspend fun saveOutUserConfiguration(context: Context, uri: Uri) = withContext(Dispatchers.IO) {

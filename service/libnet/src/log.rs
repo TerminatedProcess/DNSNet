@@ -17,8 +17,8 @@ pub trait BlockLogger {
         &self,
         connection_name: String,
         allowed: bool,
-        block_source: BlockSource,
-        ai_confidence: f32,
+        _block_source: BlockSource,
+        _ai_confidence: f32,
     ) {
         // Default implementation falls back to basic log for backward compatibility
         self.log(connection_name, allowed);

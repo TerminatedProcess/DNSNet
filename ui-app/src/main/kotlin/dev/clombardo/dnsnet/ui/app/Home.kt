@@ -745,6 +745,7 @@ fun HomeScreen(
             composable<HomeDestinations.Start> {
                 val resumeOnStartup by vm.settings.autoStart.collectAsState()
                 val blockLog by vm.settings.blockLogging.collectAsState()
+                val aiEnabled by vm.settings.aiEnabled.collectAsState()
 
                 val showDisableBlockLogWarningDialog by vm.showDisableBlockLogWarningDialog.collectAsState()
                 if (showDisableBlockLogWarningDialog) {
@@ -782,6 +783,8 @@ fun HomeScreen(
                     onOpenBlockLog = {
                         topLevelNavController.navigate(TopLevelDestination.BlockLog)
                     },
+                    aiEnabled = aiEnabled,
+                    onToggleAi = { vm.onToggleAi() },
                     onImport = onImport,
                     onExport = onExport,
                     isWritingLogcat = isWritingLogcat,

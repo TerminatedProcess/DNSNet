@@ -61,6 +61,7 @@ pub fn run_vpn_native(
     rule_database: Arc<RuleDatabaseBinding>,
     android_file_helper: Box<dyn FileHelperBinding>,
     is_doh3: bool,
+    is_ai_enabled: bool,
 ) -> Result<VpnResultBinding, VpnErrorBinding> {
     let mut vpn = Vpn::new(vpn_controller);
     let result = vpn.run(
@@ -69,6 +70,7 @@ pub fn run_vpn_native(
         rule_database,
         android_file_helper,
         is_doh3,
+        is_ai_enabled,
     );
     info!("run_vpn_native: Stopped");
     return result;
