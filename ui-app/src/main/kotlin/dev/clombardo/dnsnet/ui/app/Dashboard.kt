@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Visibility
@@ -58,6 +59,7 @@ fun DashboardScreen(
     summary: ThreatSummary,
     hourlyBlocks: List<HourlyCount>,
     topDomains: List<TopDomain>,
+    onClear: () -> Unit = {},
 ) {
     LazyColumn(
         modifier = modifier
@@ -69,12 +71,25 @@ fun DashboardScreen(
     ) {
         // Summary cards
         item {
-            Text(
-                "Today",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 8.dp)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "Today",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                androidx.compose.material3.IconButton(onClick = onClear) {
+                    Icon(
+                        Icons.Default.DeleteSweep,
+                        contentDescription = "Clear logs",
+                        tint = MaterialTheme.colorScheme.outline,
+                    )
+                }
+            }
         }
 
         item {
@@ -230,14 +245,16 @@ private fun BlocksChart(
         if (data.isEmpty()) return@Canvas
 
         val maxCount = data.maxOf { it.count }.coerceAtLeast(1)
-        val barWidth = size.width / data.size.coerceAtLeast(1) * 0.7f
-        val gap = size.width / data.size.coerceAtLeast(1) * 0.3f
-        val chartHeight = size.height - 24.dp.toPx() // leave room for labels
-        val fmt = SimpleDateFormat("HH", Locale.getDefault())
+        // Cap bar width so single data points don't fill the whole chart
+        val slotWidth = (size.width / data.size.coerceAtLeast(1)).coerceAtMost(60.dp.toPx())
+        val barWidth = slotWidth * 0.7f
+        val chartHeight = size.height - 36.dp.toPx() // room for labels below + count above
+        val topPadding = 16.dp.toPx() // room for count labels above bars
+        val fmt = SimpleDateFormat("HH:mm", Locale.getDefault())
 
         data.forEachIndexed { index, hourly ->
-            val barHeight = (hourly.count.toFloat() / maxCount) * chartHeight
-            val x = index * (barWidth + gap) + gap / 2
+            val barHeight = (hourly.count.toFloat() / maxCount) * (chartHeight - topPadding)
+            val x = index * slotWidth + (slotWidth - barWidth) / 2
 
             // Bar
             drawRect(
@@ -246,8 +263,21 @@ private fun BlocksChart(
                 size = Size(barWidth, barHeight),
             )
 
-            // Hour label (every 4th bar or if few bars)
-            if (data.size <= 8 || index % 4 == 0) {
+            // Count label above bar
+            val countText = textMeasurer.measure(
+                hourly.count.toString(),
+                style = TextStyle(fontSize = 10.sp, color = labelColor, fontWeight = FontWeight.Bold)
+            )
+            drawText(
+                countText,
+                topLeft = Offset(
+                    x + barWidth / 2 - countText.size.width / 2,
+                    chartHeight - barHeight - countText.size.height - 2.dp.toPx()
+                )
+            )
+
+            // Hour label below bar
+            if (data.size <= 12 || index % 3 == 0) {
                 val label = fmt.format(Date(hourly.hourTimestamp))
                 val textResult = textMeasurer.measure(
                     label,

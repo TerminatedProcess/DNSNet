@@ -36,6 +36,7 @@ class VpnThread(
     private val context: Context,
     private val isDoh3: Boolean,
     private val isAiEnabled: Boolean,
+    private val isBlockTrackersEnabled: Boolean,
 ) : Runnable {
     companion object {
         private const val MIN_RETRY_TIME = 5
@@ -174,6 +175,7 @@ class VpnThread(
             androidFileHelper = NativeFileHelperWrapper(context),
             isDoh3 = isDoh3,
             isAiEnabled = isAiEnabled,
+            isBlockTrackersEnabled = isBlockTrackersEnabled,
         )
     }
 

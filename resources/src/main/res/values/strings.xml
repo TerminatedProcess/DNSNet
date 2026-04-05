@@ -125,6 +125,8 @@
     <string name="dashboard_tab">Dashboard</string>
     <string name="ai_classification">AI classification</string>
     <string name="ai_classification_description">Use AI to detect and block malware domains (DGA) that bypass static blocklists</string>
+    <string name="block_trackers">Block known trackers</string>
+    <string name="block_trackers_description">Block domains used for advertising, analytics, fingerprinting, and social media tracking</string>
     <string name="warning">Warning</string>
     <string name="disable_block_log_warning_description">Once disabled, the existing block log will be deleted permanently.</string>
     <string name="disable">Disable</string>

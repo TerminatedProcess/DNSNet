@@ -125,6 +125,11 @@ class ThreatLog private constructor(context: Context) :
         writableDatabase.delete(TABLE, "timestamp < ?", arrayOf(cutoff.toString()))
     }
 
+    /** Clear all events. */
+    fun clearAll() {
+        writableDatabase.delete(TABLE, null, null)
+    }
+
     private fun startOfToday(): Long {
         val cal = java.util.Calendar.getInstance()
         cal.set(java.util.Calendar.HOUR_OF_DAY, 0)

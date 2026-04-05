@@ -752,6 +752,7 @@ fun HomeScreen(
                 val resumeOnStartup by vm.settings.autoStart.collectAsState()
                 val blockLog by vm.settings.blockLogging.collectAsState()
                 val aiEnabled by vm.settings.aiEnabled.collectAsState()
+                val blockTrackers by vm.settings.blockTrackers.collectAsState()
 
                 val showDisableBlockLogWarningDialog by vm.showDisableBlockLogWarningDialog.collectAsState()
                 if (showDisableBlockLogWarningDialog) {
@@ -791,6 +792,8 @@ fun HomeScreen(
                     },
                     aiEnabled = aiEnabled,
                     onToggleAi = { vm.onToggleAi() },
+                    blockTrackers = blockTrackers,
+                    onToggleBlockTrackers = { vm.onToggleBlockTrackers() },
                     onImport = onImport,
                     onExport = onExport,
                     isWritingLogcat = isWritingLogcat,
@@ -904,6 +907,7 @@ fun HomeScreen(
                     summary = summary,
                     hourlyBlocks = hourlyBlocks,
                     topDomains = topDomains,
+                    onClear = { vm.clearDashboard() },
                 )
             }
         }

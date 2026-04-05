@@ -110,6 +110,13 @@ class HomeViewModel @AssistedInject constructor(
         }
     }
 
+    fun clearDashboard() {
+        viewModelScope.launch(Dispatchers.IO) {
+            threatLog.clearAll()
+            refreshDashboard()
+        }
+    }
+
     private var refreshingLock = atomic(false)
 
     private val _appListRefreshing = MutableStateFlow(false)
@@ -416,6 +423,11 @@ class HomeViewModel @AssistedInject constructor(
 
     fun onToggleAi() {
         settings.aiEnabled.set(!settings.aiEnabled.get())
+        onReloadVpn()
+    }
+
+    fun onToggleBlockTrackers() {
+        settings.blockTrackers.set(!settings.blockTrackers.get())
         onReloadVpn()
     }
 

@@ -294,6 +294,14 @@ class Settings @Inject constructor(
             }
     }
 
+    val blockTrackers = object : Setting<Boolean>() {
+        override var value: Boolean
+            get() = configuration.read { blockTrackers }
+            set(value) {
+                configuration.edit { blockTrackers = value }
+            }
+    }
+
     private fun resetState() {
         autoStart.reset()
         filters.reset()
@@ -302,6 +310,7 @@ class Settings @Inject constructor(
         blockLogging.reset()
         useNetworkDnsServers.reset()
         aiEnabled.reset()
+        blockTrackers.reset()
     }
 
     suspend fun saveOutUserConfiguration(context: Context, uri: Uri) = withContext(Dispatchers.IO) {

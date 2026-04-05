@@ -116,6 +116,7 @@ data class Configuration(
     var blockLogging: Boolean = false,
     var useNetworkDnsServers: Boolean = false,
     var aiEnabled: Boolean = true,
+    var blockTrackers: Boolean = false,
 ) {
     companion object {
         const val DEFAULT_CONFIG_FILENAME = "settings.json"

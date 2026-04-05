@@ -45,6 +45,7 @@ pub struct DnsPacketProxy<'a> {
     tunneling_detector: TunnelingDetector,
     beaconing_detector: BeaconingDetector,
     tracker_list: TrackerList,
+    block_trackers: bool,
     upstream_dns_servers: Vec<Vec<u8>>,
     negative_cache_record: ResourceRecord<'a>,
 }
@@ -58,6 +59,7 @@ impl<'a> DnsPacketProxy<'a> {
         block_logger_callback: Option<Box<&'a dyn BlockLogger>>,
         rule_database: Arc<dyn RuleDatabase>,
         ai_classifier: Option<Arc<AiClassifier>>,
+        block_trackers: bool,
         upstream_dns_servers: Vec<Vec<u8>>,
     ) -> Self {
         let name = match Name::new(Self::INVALID_HOST_NAME) {
@@ -93,6 +95,7 @@ impl<'a> DnsPacketProxy<'a> {
             tunneling_detector: TunnelingDetector::new(0.5),
             beaconing_detector: BeaconingDetector::new(60, 30),
             tracker_list: TrackerList::new(),
+            block_trackers,
             upstream_dns_servers,
             negative_cache_record,
         }
@@ -226,14 +229,17 @@ impl<'a> DnsPacketProxy<'a> {
             false
         };
 
-        // Tracker detection: check against known tracker domains (flag only, don't block)
+        // Tracker detection: check against known tracker domains
         let tracker_result = self.tracker_list.check(&dns_query_name);
-        if tracker_result.is_tracker {
+        let blocked_by_tracker = if tracker_result.is_tracker {
             info!(
                 "handle_dns_request: Tracker detected {} — {} ({})",
                 dns_query_name, tracker_result.service_name, tracker_result.category,
             );
-        }
+            self.block_trackers
+        } else {
+            false
+        };
 
         // Beaconing detection: track query frequency (flag only, don't block)
         let beacon_result = self.beaconing_detector.record_and_check(&dns_query_name);
@@ -244,11 +250,13 @@ impl<'a> DnsPacketProxy<'a> {
             );
         }
 
-        let is_blocked = blocked_by_list || blocked_by_ai || blocked_by_tunneling;
+        let is_blocked = blocked_by_list || blocked_by_ai || blocked_by_tunneling || blocked_by_tracker;
         let block_source = if blocked_by_tunneling {
             BlockSource::Tunneling
         } else if blocked_by_ai {
             BlockSource::Ai
+        } else if blocked_by_tracker {
+            BlockSource::Tracker
         } else if blocked_by_list {
             BlockSource::Blocklist
         } else if tracker_result.is_tracker {
@@ -284,7 +292,7 @@ impl<'a> DnsPacketProxy<'a> {
                 }
             }
         } else {
-            let source = if blocked_by_tunneling { "tunneling detector" } else if blocked_by_ai { "AI" } else { "blocklist" };
+            let source = if blocked_by_tunneling { "tunneling detector" } else if blocked_by_tracker { "tracker blocker" } else if blocked_by_ai { "AI" } else { "blocklist" };
             info!("handle_dns_request: DNS Name {} blocked by {}!", dns_query_name, source);
 
             if let Some(block_logger) = &self.block_logger {

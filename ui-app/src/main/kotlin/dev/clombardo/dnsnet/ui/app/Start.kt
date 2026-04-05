@@ -81,6 +81,8 @@ fun StartScreen(
     onOpenBlockLog: () -> Unit,
     aiEnabled: Boolean,
     onToggleAi: () -> Unit,
+    blockTrackers: Boolean,
+    onToggleBlockTrackers: () -> Unit,
     onImport: () -> Unit,
     onExport: () -> Unit,
     isWritingLogcat: Boolean,
@@ -125,6 +127,15 @@ fun StartScreen(
                             details = stringResource(id = R.string.ai_classification_description),
                             checked = aiEnabled,
                             onCheckedChange = { onToggleAi() },
+                        )
+                    }
+
+                    item {
+                        SwitchListItem(
+                            title = stringResource(id = R.string.block_trackers),
+                            details = stringResource(id = R.string.block_trackers_description),
+                            checked = blockTrackers,
+                            onCheckedChange = { onToggleBlockTrackers() },
                         )
                     }
 
@@ -267,6 +278,8 @@ private fun StartScreenPreview() {
             onOpenBlockLog = {},
             aiEnabled = true,
             onToggleAi = {},
+            blockTrackers = false,
+            onToggleBlockTrackers = {},
             onImport = {},
             onExport = {},
             isWritingLogcat = false,

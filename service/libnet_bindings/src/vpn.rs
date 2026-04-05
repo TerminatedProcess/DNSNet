@@ -295,6 +295,7 @@ impl Vpn {
         file_helper: Box<dyn FileHelperBinding>,
         is_doh3: bool,
         is_ai_enabled: bool,
+        is_block_trackers_enabled: bool,
     ) -> Result<VpnResultBinding, VpnErrorBinding> {
         let mut packet = vec![0u8; i16::MAX as usize];
 
@@ -405,6 +406,7 @@ impl Vpn {
             block_logger,
             rule_database,
             ai_classifier,
+            is_block_trackers_enabled,
             dns_servers
                 .iter()
                 .filter_map(|container| match &container.server {
