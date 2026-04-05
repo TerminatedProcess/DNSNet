@@ -23,6 +23,9 @@ data class BlockLogger(val connections: MutableMap<String, LoggedConnection> = H
     @Transient
     private var onConnection: ((name: String, connection: LoggedConnection) -> Unit)? = null
 
+    @Transient
+    var threatLog: ThreatLog? = null
+
     fun setOnConnectionListener(listener: ((name: String, connection: LoggedConnection) -> Unit)?) {
         onConnection = listener
     }
@@ -47,6 +50,10 @@ data class BlockLogger(val connections: MutableMap<String, LoggedConnection> = H
             connections[name] = LoggedConnection(allowed, 1, now, blockSource, aiConfidence)
         }
         onConnection?.invoke(name, connections[name]!!)
+
+        // Record to persistent threat log
+        val action = if (allowed) "allowed" else "blocked"
+        threatLog?.record(name, blockSource, action, aiConfidence)
     }
 
     @OptIn(ExperimentalSerializationApi::class)

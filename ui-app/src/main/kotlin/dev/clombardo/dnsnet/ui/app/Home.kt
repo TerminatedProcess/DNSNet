@@ -31,6 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Filter1
 import androidx.compose.material.icons.filled.FilterAlt
@@ -99,7 +100,8 @@ enum class HomeDestinationIcon(val icon: ImageVector) {
     Start(Icons.Default.VpnKey),
     Filters(Icons.Default.FilterAlt),
     Apps(Icons.Default.Android),
-    DNS(Icons.Default.Dns);
+    DNS(Icons.Default.Dns),
+    Dashboard(Icons.Default.Dashboard);
 }
 
 @Parcelize
@@ -110,7 +112,7 @@ open class HomeDestination(
 ) : Parcelable
 
 object HomeDestinations {
-    val entries = listOf(Start, Filters, Apps, DNS)
+    val entries = listOf(Start, Filters, Apps, DNS, Dashboard)
 
     @Parcelize
     @Serializable
@@ -127,6 +129,10 @@ object HomeDestinations {
     @Parcelize
     @Serializable
     data object DNS : HomeDestination(HomeDestinationIcon.DNS, R.string.dns_tab)
+
+    @Parcelize
+    @Serializable
+    data object Dashboard : HomeDestination(HomeDestinationIcon.Dashboard, R.string.dashboard_tab)
 }
 
 @Parcelize
@@ -880,6 +886,24 @@ fun HomeScreen(
                         vm.toggleDnsServer(item)
                     },
                     firstItemFocusRequester = firstItemFocusRequester,
+                )
+            }
+            composable<HomeDestinations.Dashboard> {
+                val summary by vm.dashboardSummary.collectAsState()
+                val hourlyBlocks by vm.hourlyBlocks.collectAsState()
+                val topDomains by vm.topDomains.collectAsState()
+
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    vm.refreshDashboard()
+                }
+
+                DashboardScreen(
+                    contentPadding = contentPadding + PaddingValues(
+                        dev.clombardo.dnsnet.ui.common.theme.ListPadding
+                    ),
+                    summary = summary,
+                    hourlyBlocks = hourlyBlocks,
+                    topDomains = topDomains,
                 )
             }
         }

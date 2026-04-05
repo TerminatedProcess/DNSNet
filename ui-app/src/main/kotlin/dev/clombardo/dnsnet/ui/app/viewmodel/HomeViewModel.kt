@@ -22,7 +22,11 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.clombardo.dnsnet.blocklogger.BlockLogger
+import dev.clombardo.dnsnet.blocklogger.HourlyCount
 import dev.clombardo.dnsnet.blocklogger.LoggedConnection
+import dev.clombardo.dnsnet.blocklogger.ThreatLog
+import dev.clombardo.dnsnet.blocklogger.ThreatSummary
+import dev.clombardo.dnsnet.blocklogger.TopDomain
 import dev.clombardo.dnsnet.common.logDebug
 import dev.clombardo.dnsnet.settings.AllowListMode
 import dev.clombardo.dnsnet.settings.BlockList
@@ -59,6 +63,7 @@ class HomeViewModel @AssistedInject constructor(
     val settings: Settings,
     private val preferences: Preferences,
     private val blockLogger: BlockLogger,
+    private val threatLog: ThreatLog,
     @Assisted private val onSetupComplete: OnSetupComplete,
     @Assisted private val onReloadVpn: OnReloadVpn,
     @Assisted private val onReloadDatabase: OnReloadDatabase,
@@ -86,6 +91,24 @@ class HomeViewModel @AssistedInject constructor(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = "",
     )
+
+    // Dashboard data
+    private val _dashboardSummary = MutableStateFlow(ThreatSummary())
+    val dashboardSummary = _dashboardSummary.asStateFlow()
+
+    private val _hourlyBlocks = MutableStateFlow<List<HourlyCount>>(emptyList())
+    val hourlyBlocks = _hourlyBlocks.asStateFlow()
+
+    private val _topDomains = MutableStateFlow<List<TopDomain>>(emptyList())
+    val topDomains = _topDomains.asStateFlow()
+
+    fun refreshDashboard() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _dashboardSummary.value = threatLog.todaySummary()
+            _hourlyBlocks.value = threatLog.hourlyBlocks24h()
+            _topDomains.value = threatLog.topDomains(10)
+        }
+    }
 
     private var refreshingLock = atomic(false)
 

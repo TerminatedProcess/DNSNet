@@ -15,6 +15,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.clombardo.dnsnet.blocklogger.BlockLogger
+import dev.clombardo.dnsnet.blocklogger.ThreatLog
 import javax.inject.Singleton
 
 @Module
@@ -22,7 +23,18 @@ import javax.inject.Singleton
 object BlockLoggerModule {
     @Provides
     @Singleton
-    fun provideBlockLogger(@ApplicationContext context: Context): BlockLogger {
-        return BlockLogger.load(context)
+    fun provideThreatLog(@ApplicationContext context: Context): ThreatLog {
+        return ThreatLog.getInstance(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideBlockLogger(
+        @ApplicationContext context: Context,
+        threatLog: ThreatLog,
+    ): BlockLogger {
+        return BlockLogger.load(context).apply {
+            this.threatLog = threatLog
+        }
     }
 }
