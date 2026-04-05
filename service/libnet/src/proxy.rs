@@ -23,6 +23,7 @@ use crate::{
     database::RuleDatabase,
     log::{BlockLogger, BlockSource},
     packet::GenericIpPacket,
+    sni_inspector::SniInspector,
     tracker_list::TrackerList,
     tunneling_detector::TunnelingDetector,
     vpn::VpnError,
@@ -46,6 +47,7 @@ pub struct DnsPacketProxy<'a> {
     beaconing_detector: BeaconingDetector,
     tracker_list: TrackerList,
     block_trackers: bool,
+    sni_inspector: SniInspector,
     upstream_dns_servers: Vec<Vec<u8>>,
     negative_cache_record: ResourceRecord<'a>,
 }
@@ -96,6 +98,7 @@ impl<'a> DnsPacketProxy<'a> {
             beaconing_detector: BeaconingDetector::new(60, 30),
             tracker_list: TrackerList::new(),
             block_trackers,
+            sni_inspector: SniInspector::new(block_trackers),
             upstream_dns_servers,
             negative_cache_record,
         }
@@ -123,7 +126,8 @@ impl<'a> DnsPacketProxy<'a> {
         let udp_packet = match packet.get_udp_packet() {
             Some(value) => value,
             None => {
-                debug!("handle_dns_request: IP packet did not contain UDP payload");
+                // Not a UDP packet — check if it's a TLS ClientHello for SNI inspection
+                self.sni_inspector.inspect(packet_data);
                 return Ok(());
             }
         };

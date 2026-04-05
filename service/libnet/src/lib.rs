@@ -18,6 +18,7 @@ pub mod file;
 pub mod log;
 pub mod packet;
 pub mod proxy;
+pub mod sni_inspector;
 pub mod tracker_list;
 pub mod tunneling_detector;
 mod util;
