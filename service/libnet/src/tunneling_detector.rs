@@ -32,11 +32,12 @@ pub struct TunnelingDetector {
 // ---------------------------------------------------------------------------
 // Heuristic weights — must sum to 1.0
 // ---------------------------------------------------------------------------
-const W_LENGTH: f32 = 0.25;
+const W_LENGTH: f32 = 0.20;
 const W_ENTROPY: f32 = 0.20;
 const W_HEX_BASE64: f32 = 0.25;
 const W_LABEL_COUNT: f32 = 0.10;
-const W_LONGEST_LABEL: f32 = 0.20;
+const W_LONGEST_LABEL: f32 = 0.15;
+const W_GIBBERISH: f32 = 0.10;
 
 impl TunnelingDetector {
     /// Create a new detector with the given combined-score threshold (0.0-1.0).
@@ -89,11 +90,16 @@ impl TunnelingDetector {
         let longest = subdomain.split('.').map(|l| l.len()).max().unwrap_or(0);
         let longest_score = ((longest as f32 - 12.0) / 33.0).clamp(0.0, 1.0);
 
+        // 6. Gibberish / consonant-cluster score — catches lowercased base64
+        //    which has dense consonant runs that never appear in real words.
+        let gibberish_score = gibberish_score(&subdomain_chars);
+
         let score = (W_LENGTH * length_score
             + W_ENTROPY * entropy_score
             + W_HEX_BASE64 * hex_b64_score
             + W_LABEL_COUNT * label_score
-            + W_LONGEST_LABEL * longest_score)
+            + W_LONGEST_LABEL * longest_score
+            + W_GIBBERISH * gibberish_score)
             .clamp(0.0, 1.0);
 
         TunnelingResult {
@@ -179,6 +185,10 @@ fn hex_base64_score(s: &str) -> f32 {
     let digit_count = s.bytes().filter(|b| b.is_ascii_digit()).count() as f32;
     let digit_ratio = digit_count / len;
 
+    // Base64 alphabet chars (a-z, A-Z, 0-9) — high ratio means encoded data.
+    let b64_count = s.bytes().filter(|b| b.is_ascii_alphanumeric()).count() as f32;
+    let b64_ratio = b64_count / len;
+
     // Vowel scarcity — real words have vowels; encoded data usually doesn't.
     let vowel_count = s
         .bytes()
@@ -187,27 +197,99 @@ fn hex_base64_score(s: &str) -> f32 {
     let vowel_ratio = vowel_count / len;
 
     // Uppercase mixing — base64 uses mixed case, normal subdomains rarely do.
+    // But Android lowercases domains, so we can't rely on this alone.
     let upper_count = s.bytes().filter(|b| b.is_ascii_uppercase()).count() as f32;
     let has_mixed_case = upper_count > 0.0 && upper_count < len;
 
     // Combine signals. Pure hex (all hex chars, many digits, few vowels)
-    // should score high. Base64 (mixed case, alphanumeric) should also score
-    // high.
-    let case_bonus: f32 = if has_mixed_case { 0.15 } else { 0.0 };
+    // should score high. Base64 (mixed case OR all-lowercase with low vowel
+    // ratio and high alphanumeric ratio) should also score high.
+    let case_bonus: f32 = if has_mixed_case { 0.10 } else { 0.0 };
+
+    // Lowercased base64 bonus: all lowercase, almost entirely alphanumeric,
+    // very few vowels — this is the Android-lowercased base64 pattern.
+    let lc_b64_bonus: f32 = if !has_mixed_case && b64_ratio > 0.90 && vowel_ratio < 0.20 && len > 20.0 {
+        0.15
+    } else {
+        0.0
+    };
 
     let raw = if hex_ratio > 0.95 && digit_ratio > 0.2 {
         // Looks like a pure hex-encoded string.
         0.85
     } else {
-        0.30 * hex_ratio
-            + 0.25 * digit_ratio
-            + 0.25 * (1.0 - vowel_ratio)
+        0.25 * hex_ratio
+            + 0.20 * digit_ratio
+            + 0.30 * (1.0 - vowel_ratio)
             + case_bonus
+            + lc_b64_bonus
     };
 
     // Normal subdomains ("www", "mail", "cdn01") score roughly 0.2-0.4.
     // Encoded payloads score 0.6+. Rescale into 0-1.
-    ((raw - 0.25) / 0.55).clamp(0.0, 1.0)
+    ((raw - 0.25) / 0.50).clamp(0.0, 1.0)
+}
+
+/// Score (0.0-1.0) indicating how much a string looks like random gibberish
+/// based on consonant clustering. Lowercased base64 produces dense consonant
+/// runs (e.g. "ywjjzgvmz2hp") that never appear in real domain labels.
+fn gibberish_score(s: &str) -> f32 {
+    if s.len() < 8 {
+        return 0.0;
+    }
+    let len = s.len() as f32;
+
+    let is_vowel = |b: u8| matches!(b, b'a' | b'e' | b'i' | b'o' | b'u');
+
+    // Count the longest consonant run and average consonant run length.
+    let mut max_run: usize = 0;
+    let mut current_run: usize = 0;
+    let mut total_consonant_runs: usize = 0;
+    let mut num_runs: usize = 0;
+
+    for b in s.bytes() {
+        if b.is_ascii_alphabetic() && !is_vowel(b.to_ascii_lowercase()) {
+            current_run += 1;
+        } else {
+            if current_run > 1 {
+                total_consonant_runs += current_run;
+                num_runs += 1;
+            }
+            if current_run > max_run {
+                max_run = current_run;
+            }
+            current_run = 0;
+        }
+    }
+    // Final run.
+    if current_run > 1 {
+        total_consonant_runs += current_run;
+        num_runs += 1;
+    }
+    if current_run > max_run {
+        max_run = current_run;
+    }
+
+    let avg_run = if num_runs > 0 {
+        total_consonant_runs as f32 / num_runs as f32
+    } else {
+        0.0
+    };
+
+    // Vowel ratio — real words in most languages have 30-45% vowels.
+    let vowel_count = s.bytes().filter(|&b| is_vowel(b.to_ascii_lowercase())).count() as f32;
+    let vowel_ratio = vowel_count / len;
+
+    // Long max consonant run: ramp from 0 at 3 to 1 at 8.
+    let run_score = ((max_run as f32 - 3.0) / 5.0).clamp(0.0, 1.0);
+
+    // Average consonant run: ramp from 0 at 2 to 1 at 5.
+    let avg_score = ((avg_run - 2.0) / 3.0).clamp(0.0, 1.0);
+
+    // Low vowel ratio: ramp from 0 at 0.25 to 1 at 0.05.
+    let vowel_score = ((0.25 - vowel_ratio) / 0.20).clamp(0.0, 1.0);
+
+    (0.35 * run_score + 0.30 * avg_score + 0.35 * vowel_score).clamp(0.0, 1.0)
 }
 
 // ---------------------------------------------------------------------------
@@ -324,6 +406,51 @@ mod tests {
         let domain = "aGVsbG8gd29ybGQgdGhpcyBpcyBhIHRlc3Q.bbc.co.uk";
         let r = detector().check(domain);
         assert!(r.is_tunneling, "should detect tunneling under co.uk, score={}", r.score);
+    }
+
+    // ---- real test domains (lowercased by Android) ----
+
+    #[test]
+    fn test_hex_exfil_domain_lowercased() {
+        // This domain was tested on-device and scored 76.6%.
+        let domain = "data-7f8a9b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a.exfil.org";
+        let r = detector().check(domain);
+        assert!(
+            r.is_tunneling,
+            "hex exfil domain should be detected, score={}",
+            r.score
+        );
+        assert!(r.score >= 0.5, "score {} should be >= 0.5", r.score);
+    }
+
+    #[test]
+    fn test_base64_tunnel_lowercased() {
+        // Android lowercases this: YWJjZGVm... -> ywjjzgvm...
+        // The DGA classifier catches the original, but the tunneling detector
+        // should also flag it.
+        let domain =
+            "ywjjzgvmz2hpamtsbw5vchhyc3r1dnd4exoxmjm0nty3odk.tunnel.net";
+        let r = detector().check(domain);
+        assert!(
+            r.is_tunneling,
+            "lowercased base64 should be detected as tunneling, score={}",
+            r.score
+        );
+        assert!(r.score >= 0.5, "score {} should be >= 0.5", r.score);
+    }
+
+    #[test]
+    fn test_base64_evil_lowercased() {
+        // Android lowercases: aGVsbG8gd29ybGQg... -> agvsbg8gd29ybgqgdghpcybpcybhihrlc3qgzm9yigruck
+        let domain =
+            "agvsbg8gd29ybgqgdghpcybpcybhihrlc3qgzm9yigruck.evil.com";
+        let r = detector().check(domain);
+        assert!(
+            r.is_tunneling,
+            "lowercased base64 evil.com domain should be detected, score={}",
+            r.score
+        );
+        assert!(r.score >= 0.5, "score {} should be >= 0.5", r.score);
     }
 
     // ---- helper tests ----

@@ -105,7 +105,7 @@ class ConfigurationManager @Inject constructor(
 data class Configuration(
     var version: Int = 1,
     var minorVersion: Int = 0,
-    var autoStart: Boolean = false,
+    var autoStart: Boolean = true,
     @SerialName("hosts") var filters: Filters = Filters(),
     var dnsServers: DnsServers = DnsServers(),
     var appList: AppList = AppList(),

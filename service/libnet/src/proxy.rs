@@ -90,7 +90,7 @@ impl<'a> DnsPacketProxy<'a> {
                 std::num::NonZeroUsize::new(10_000).unwrap(),
                 RandomState::new(),
             ),
-            tunneling_detector: TunnelingDetector::new(0.6),
+            tunneling_detector: TunnelingDetector::new(0.5),
             beaconing_detector: BeaconingDetector::new(60, 30),
             tracker_list: TrackerList::new(),
             upstream_dns_servers,
