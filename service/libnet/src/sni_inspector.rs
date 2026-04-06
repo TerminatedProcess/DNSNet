@@ -9,12 +9,11 @@
 //! resolved via cached DNS or hardcoded IPs, and detect ad/tracker
 //! connections that bypass DNS-level blocking.
 
-use std::collections::HashMap;
 use std::num::NonZeroUsize;
 use lru::LruCache;
 use log::info;
 
-use crate::tracker_list::{TrackerList, TrackerResult};
+use crate::tracker_list::TrackerList;
 
 /// Extracted SNI information from a TLS ClientHello.
 #[derive(Debug, Clone)]
