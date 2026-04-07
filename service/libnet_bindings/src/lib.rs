@@ -132,6 +132,12 @@ pub trait FileHelperBinding {
     fn get_dns_cache_file_fd(&self) -> Option<i32>;
     /// Returns the AI classifier model binary data, or None if unavailable
     fn get_ai_model_data(&self) -> Option<Vec<u8>>;
+
+    /// Get user-whitelisted domains (policy = "allow")
+    fn get_allowed_domains(&self) -> Option<Vec<String>>;
+
+    /// Get user-blacklisted domains (policy = "block")
+    fn get_blocked_domains(&self) -> Option<Vec<String>>;
 }
 
 impl FileHelper for &Box<dyn FileHelperBinding> {
@@ -176,6 +182,7 @@ impl BlockLogger for Box<dyn BlockLoggerBinding> {
             BlockSource::Tunneling => "tunneling",
             BlockSource::Tracker => "tracker",
             BlockSource::Beaconing => "beaconing",
+            BlockSource::UserPolicy => "user_policy",
             BlockSource::None => "none",
         };
         self.log_connection_with_ai(connection_name, allowed, source_str.to_string(), ai_confidence);

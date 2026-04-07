@@ -431,6 +431,10 @@ class HomeViewModel @AssistedInject constructor(
         onReloadVpn()
     }
 
+    fun reconnectVpn() {
+        onReloadVpn()
+    }
+
     fun onEnableBlockLog() {
         settings.blockLogging.set(true)
         onReloadVpn()

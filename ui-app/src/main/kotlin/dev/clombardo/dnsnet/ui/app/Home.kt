@@ -165,6 +165,10 @@ sealed class TopLevelDestination : Parcelable {
     @Parcelize
     @Serializable
     data class Presets(val canGoBack: Boolean) : TopLevelDestination()
+
+    @Parcelize
+    @Serializable
+    data class ThreatDetail(val domain: String) : TopLevelDestination()
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -503,6 +507,15 @@ fun App(
             }
             composable<TopLevelDestination.Credits> {
                 CreditsScreen { navController.tryPopBackstack(it.id) }
+            }
+            composable<TopLevelDestination.ThreatDetail> { backstackEntry ->
+                val detailVm: dev.clombardo.dnsnet.ui.app.viewmodel.ThreatDetailViewModel =
+                    androidx.hilt.navigation.compose.hiltViewModel()
+                ThreatDetailScreen(
+                    vm = detailVm,
+                    onNavigateUp = { navController.tryPopBackstack(backstackEntry.id) },
+                    onReloadVpn = { vm.reconnectVpn() },
+                )
             }
         }
     }
@@ -908,6 +921,9 @@ fun HomeScreen(
                     hourlyBlocks = hourlyBlocks,
                     topDomains = topDomains,
                     onClear = { vm.clearDashboard() },
+                    onDomainClick = { domain ->
+                        topLevelNavController.navigate(TopLevelDestination.ThreatDetail(domain))
+                    },
                 )
             }
         }

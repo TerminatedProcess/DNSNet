@@ -9,13 +9,14 @@ import android.database.sqlite.SQLiteOpenHelper
  * Persistent threat event log backed by SQLite.
  * Records every DNS decision with source, action, and confidence
  * for dashboard statistics and historical analysis.
+ * Also stores per-domain user policy overrides (allow/auto/block).
  */
 class ThreatLog private constructor(context: Context) :
     SQLiteOpenHelper(context, DB_NAME, null, DB_VERSION) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("""
-            CREATE TABLE $TABLE (
+            CREATE TABLE $TABLE_EVENTS (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp INTEGER NOT NULL,
                 domain TEXT NOT NULL,
@@ -24,17 +25,38 @@ class ThreatLog private constructor(context: Context) :
                 confidence REAL NOT NULL DEFAULT 0.0
             )
         """)
-        db.execSQL("CREATE INDEX idx_timestamp ON $TABLE(timestamp)")
-        db.execSQL("CREATE INDEX idx_source ON $TABLE(source)")
-        db.execSQL("CREATE INDEX idx_action ON $TABLE(action)")
+        db.execSQL("CREATE INDEX idx_timestamp ON $TABLE_EVENTS(timestamp)")
+        db.execSQL("CREATE INDEX idx_source ON $TABLE_EVENTS(source)")
+        db.execSQL("CREATE INDEX idx_action ON $TABLE_EVENTS(action)")
+        db.execSQL("CREATE INDEX idx_domain ON $TABLE_EVENTS(domain)")
+
+        db.execSQL("""
+            CREATE TABLE $TABLE_POLICIES (
+                domain TEXT PRIMARY KEY,
+                policy TEXT NOT NULL DEFAULT 'auto',
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+        """)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS $TABLE")
-        onCreate(db)
+        if (oldVersion < 2) {
+            // v1 → v2: add domain_policies table and domain index on events
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS $TABLE_POLICIES (
+                    domain TEXT PRIMARY KEY,
+                    policy TEXT NOT NULL DEFAULT 'auto',
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL
+                )
+            """)
+            db.execSQL("CREATE INDEX IF NOT EXISTS idx_domain ON $TABLE_EVENTS(domain)")
+        }
     }
 
-    /** Record a threat event. Called from BlockLogger on every DNS decision. */
+    // ── Event Recording ──
+
     fun record(domain: String, source: String, action: String, confidence: Float) {
         val values = ContentValues().apply {
             put("timestamp", System.currentTimeMillis())
@@ -43,17 +65,18 @@ class ThreatLog private constructor(context: Context) :
             put("action", action)
             put("confidence", confidence)
         }
-        writableDatabase.insert(TABLE, null, values)
+        writableDatabase.insert(TABLE_EVENTS, null, values)
     }
 
-    /** Summary counts for today. */
+    // ── Dashboard Summary Queries ──
+
     fun todaySummary(): ThreatSummary {
         val startOfDay = startOfToday()
         val db = readableDatabase
 
         fun countWhere(where: String): Int {
             db.rawQuery(
-                "SELECT COUNT(*) FROM $TABLE WHERE timestamp >= ? AND $where",
+                "SELECT COUNT(*) FROM $TABLE_EVENTS WHERE timestamp >= ? AND $where",
                 arrayOf(startOfDay.toString())
             ).use { c ->
                 return if (c.moveToFirst()) c.getInt(0) else 0
@@ -71,7 +94,6 @@ class ThreatLog private constructor(context: Context) :
         )
     }
 
-    /** Hourly block counts for the last 24 hours. Returns list of (hour, count). */
     fun hourlyBlocks24h(): List<HourlyCount> {
         val since = System.currentTimeMillis() - 24 * 60 * 60 * 1000L
         val db = readableDatabase
@@ -79,7 +101,7 @@ class ThreatLog private constructor(context: Context) :
 
         db.rawQuery("""
             SELECT (timestamp / 3600000) * 3600000 AS hour_bucket, COUNT(*) AS cnt
-            FROM $TABLE
+            FROM $TABLE_EVENTS
             WHERE timestamp >= ? AND action = 'blocked'
             GROUP BY hour_bucket
             ORDER BY hour_bucket ASC
@@ -91,14 +113,13 @@ class ThreatLog private constructor(context: Context) :
         return result
     }
 
-    /** Top N most-seen domains with their source and total count. */
     fun topDomains(limit: Int = 10): List<TopDomain> {
         val db = readableDatabase
         val result = mutableListOf<TopDomain>()
 
         db.rawQuery("""
             SELECT domain, source, action, COUNT(*) AS cnt, MAX(confidence) AS max_conf
-            FROM $TABLE
+            FROM $TABLE_EVENTS
             WHERE action = 'blocked' OR source IN ('tracker', 'beaconing')
             GROUP BY domain
             ORDER BY cnt DESC
@@ -119,15 +140,130 @@ class ThreatLog private constructor(context: Context) :
         return result
     }
 
-    /** Purge events older than the given number of days. */
-    fun purgeOlderThan(days: Int = 30) {
-        val cutoff = System.currentTimeMillis() - days * 24L * 60 * 60 * 1000
-        writableDatabase.delete(TABLE, "timestamp < ?", arrayOf(cutoff.toString()))
+    // ── Domain Detail Queries ──
+
+    fun domainDetail(domain: String): DomainDetail? {
+        val db = readableDatabase
+        db.rawQuery("""
+            SELECT
+                COUNT(*) AS total_hits,
+                MIN(timestamp) AS first_seen,
+                MAX(timestamp) AS last_seen,
+                SUM(CASE WHEN action = 'blocked' THEN 1 ELSE 0 END) AS blocked_count,
+                SUM(CASE WHEN action = 'allowed' THEN 1 ELSE 0 END) AS allowed_count,
+                MAX(confidence) AS max_confidence
+            FROM $TABLE_EVENTS
+            WHERE domain = ?
+        """, arrayOf(domain)).use { c ->
+            if (!c.moveToFirst() || c.getInt(0) == 0) return null
+            val totalHits = c.getInt(0)
+            val firstSeen = c.getLong(1)
+            val lastSeen = c.getLong(2)
+            val blockedCount = c.getInt(3)
+            val allowedCount = c.getInt(4)
+            val maxConfidence = c.getFloat(5)
+
+            // Get the most common source for this domain
+            var primarySource = "none"
+            db.rawQuery("""
+                SELECT source, COUNT(*) AS cnt
+                FROM $TABLE_EVENTS
+                WHERE domain = ?
+                GROUP BY source
+                ORDER BY cnt DESC
+                LIMIT 1
+            """, arrayOf(domain)).use { sc ->
+                if (sc.moveToFirst()) primarySource = sc.getString(0)
+            }
+
+            return DomainDetail(
+                domain = domain,
+                totalHits = totalHits,
+                firstSeen = firstSeen,
+                lastSeen = lastSeen,
+                primarySource = primarySource,
+                maxConfidence = maxConfidence,
+                blockedCount = blockedCount,
+                allowedCount = allowedCount,
+            )
+        }
     }
 
-    /** Clear all events. */
+    fun domainHourlyActivity(domain: String, hours: Int = 24): List<HourlyCount> {
+        val since = System.currentTimeMillis() - hours * 60 * 60 * 1000L
+        val db = readableDatabase
+        val result = mutableListOf<HourlyCount>()
+
+        db.rawQuery("""
+            SELECT (timestamp / 3600000) * 3600000 AS hour_bucket, COUNT(*) AS cnt
+            FROM $TABLE_EVENTS
+            WHERE domain = ? AND timestamp >= ?
+            GROUP BY hour_bucket
+            ORDER BY hour_bucket ASC
+        """, arrayOf(domain, since.toString())).use { c ->
+            while (c.moveToNext()) {
+                result.add(HourlyCount(c.getLong(0), c.getInt(1)))
+            }
+        }
+        return result
+    }
+
+    // ── Domain Policy Management ──
+
+    fun setPolicy(domain: String, policy: DomainPolicy) {
+        val now = System.currentTimeMillis()
+        val values = ContentValues().apply {
+            put("domain", domain)
+            put("policy", policy.value)
+            put("created_at", now)
+            put("updated_at", now)
+        }
+        writableDatabase.insertWithOnConflict(
+            TABLE_POLICIES, null, values, SQLiteDatabase.CONFLICT_REPLACE
+        )
+    }
+
+    fun getPolicy(domain: String): DomainPolicy {
+        readableDatabase.rawQuery(
+            "SELECT policy FROM $TABLE_POLICIES WHERE domain = ?",
+            arrayOf(domain)
+        ).use { c ->
+            if (c.moveToFirst()) {
+                return DomainPolicy.fromValue(c.getString(0))
+            }
+        }
+        return DomainPolicy.AUTO
+    }
+
+    fun getAllowedDomains(): List<String> {
+        val result = mutableListOf<String>()
+        readableDatabase.rawQuery(
+            "SELECT domain FROM $TABLE_POLICIES WHERE policy = 'allow'", null
+        ).use { c ->
+            while (c.moveToNext()) result.add(c.getString(0))
+        }
+        return result
+    }
+
+    fun getBlockedDomains(): List<String> {
+        val result = mutableListOf<String>()
+        readableDatabase.rawQuery(
+            "SELECT domain FROM $TABLE_POLICIES WHERE policy = 'block'", null
+        ).use { c ->
+            while (c.moveToNext()) result.add(c.getString(0))
+        }
+        return result
+    }
+
+    // ── Maintenance ──
+
+    fun purgeOlderThan(days: Int = 30) {
+        val cutoff = System.currentTimeMillis() - days * 24L * 60 * 60 * 1000
+        writableDatabase.delete(TABLE_EVENTS, "timestamp < ?", arrayOf(cutoff.toString()))
+    }
+
     fun clearAll() {
-        writableDatabase.delete(TABLE, null, null)
+        writableDatabase.delete(TABLE_EVENTS, null, null)
     }
 
     private fun startOfToday(): Long {
@@ -141,8 +277,9 @@ class ThreatLog private constructor(context: Context) :
 
     companion object {
         private const val DB_NAME = "threat_log.db"
-        private const val DB_VERSION = 1
-        private const val TABLE = "events"
+        private const val DB_VERSION = 2
+        private const val TABLE_EVENTS = "events"
+        private const val TABLE_POLICIES = "domain_policies"
 
         @Volatile
         private var INSTANCE: ThreatLog? = null
@@ -152,6 +289,17 @@ class ThreatLog private constructor(context: Context) :
                 INSTANCE ?: ThreatLog(context.applicationContext).also { INSTANCE = it }
             }
         }
+    }
+}
+
+enum class DomainPolicy(val value: String) {
+    ALLOW("allow"),
+    AUTO("auto"),
+    BLOCK("block");
+
+    companion object {
+        fun fromValue(value: String): DomainPolicy =
+            entries.firstOrNull { it.value == value } ?: AUTO
     }
 }
 
@@ -176,4 +324,15 @@ data class TopDomain(
     val action: String,
     val count: Int,
     val maxConfidence: Float,
+)
+
+data class DomainDetail(
+    val domain: String,
+    val totalHits: Int,
+    val firstSeen: Long,
+    val lastSeen: Long,
+    val primarySource: String,
+    val maxConfidence: Float,
+    val blockedCount: Int,
+    val allowedCount: Int,
 )

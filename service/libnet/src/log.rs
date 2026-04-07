@@ -11,6 +11,8 @@ pub enum BlockSource {
     Tracker,
     /// Domain is beaconing (high-frequency queries)
     Beaconing,
+    /// Domain was explicitly allowed/blocked by user policy override
+    UserPolicy,
     /// Domain was not blocked or flagged
     None,
 }

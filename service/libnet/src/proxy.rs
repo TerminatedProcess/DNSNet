@@ -9,6 +9,7 @@
 use core::str;
 use std::sync::Arc;
 
+use std::collections::HashSet;
 use ahash::RandomState;
 use lru::LruCache;
 
@@ -48,6 +49,8 @@ pub struct DnsPacketProxy<'a> {
     tracker_list: TrackerList,
     block_trackers: bool,
     sni_inspector: SniInspector,
+    user_allowed: HashSet<String>,
+    user_blocked: HashSet<String>,
     upstream_dns_servers: Vec<Vec<u8>>,
     negative_cache_record: ResourceRecord<'a>,
 }
@@ -62,6 +65,8 @@ impl<'a> DnsPacketProxy<'a> {
         rule_database: Arc<dyn RuleDatabase>,
         ai_classifier: Option<Arc<AiClassifier>>,
         block_trackers: bool,
+        user_allowed: Vec<String>,
+        user_blocked: Vec<String>,
         upstream_dns_servers: Vec<Vec<u8>>,
     ) -> Self {
         let name = match Name::new(Self::INVALID_HOST_NAME) {
@@ -99,6 +104,8 @@ impl<'a> DnsPacketProxy<'a> {
             tracker_list: TrackerList::new(),
             block_trackers,
             sni_inspector: SniInspector::new(block_trackers),
+            user_allowed: user_allowed.into_iter().collect(),
+            user_blocked: user_blocked.into_iter().collect(),
             upstream_dns_servers,
             negative_cache_record,
         }
@@ -181,6 +188,46 @@ impl<'a> DnsPacketProxy<'a> {
             .qname
             .to_string()
             .to_lowercase();
+        // User policy override — highest priority, checked first
+        if self.user_allowed.contains(&dns_query_name) {
+            info!("handle_dns_request: DNS Name {} user-allowed (policy override). Sending to {:?}",
+                dns_query_name, str::from_utf8(&translated_destination_address));
+
+            if let Some(block_logger) = &self.block_logger {
+                block_logger.log_with_ai(dns_query_name.clone(), true, BlockSource::UserPolicy, 0.0);
+            }
+
+            if let Err(error) = backend.forward_packet(
+                self.socket_protector, udp_packet.payload(), packet_data,
+                translated_destination_address, destination_port,
+            ) {
+                error!("handle_dns_request: Failed to forward packet - {:?}", error);
+                match error {
+                    DnsBackendError::SocketFailure => return Err(VpnError::SocketFailure),
+                    _ => return Ok(()),
+                }
+            }
+            return Ok(());
+        }
+        if self.user_blocked.contains(&dns_query_name) {
+            info!("handle_dns_request: DNS Name {} user-blocked (policy override)!", dns_query_name);
+
+            if let Some(block_logger) = &self.block_logger {
+                block_logger.log_with_ai(dns_query_name.clone(), false, BlockSource::UserPolicy, 1.0);
+            }
+
+            dns_packet.set_flags(PacketFlag::RESPONSE);
+            *dns_packet.rcode_mut() = simple_dns::RCODE::NoError;
+            dns_packet.additional_records.push(self.negative_cache_record.clone());
+            let mut wire = Vec::<u8>::new();
+            if let Err(error) = dns_packet.write_to(&mut wire) {
+                error!("Failed to write DNS packet to wire! - {:?}", error);
+                return Ok(());
+            }
+            response_handler.handle(packet_data, &wire);
+            return Ok(());
+        }
+
         let blocked_by_list = self.rule_database.is_blocked(&dns_query_name);
 
         // AI classification: if not blocked by static list, check with AI classifier

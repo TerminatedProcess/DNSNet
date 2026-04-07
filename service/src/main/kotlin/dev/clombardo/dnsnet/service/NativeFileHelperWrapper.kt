@@ -10,6 +10,7 @@ package dev.clombardo.dnsnet.service
 
 import android.content.Context
 import android.os.ParcelFileDescriptor
+import dev.clombardo.dnsnet.blocklogger.ThreatLog
 import dev.clombardo.dnsnet.common.FileHelper
 import uniffi.net_bindings.FileHelperBinding
 import java.io.File
@@ -30,4 +31,10 @@ class NativeFileHelperWrapper(private val context: Context) : FileHelperBinding 
         } catch (e: Exception) {
             null
         }
+
+    override fun getAllowedDomains(): List<String>? =
+        ThreatLog.getInstance(context).getAllowedDomains().ifEmpty { null }
+
+    override fun getBlockedDomains(): List<String>? =
+        ThreatLog.getInstance(context).getBlockedDomains().ifEmpty { null }
 }

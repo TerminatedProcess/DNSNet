@@ -60,6 +60,7 @@ fun DashboardScreen(
     hourlyBlocks: List<HourlyCount>,
     topDomains: List<TopDomain>,
     onClear: () -> Unit = {},
+    onDomainClick: (String) -> Unit = {},
 ) {
     LazyColumn(
         modifier = modifier
@@ -183,7 +184,7 @@ fun DashboardScreen(
             }
 
             items(topDomains) { td ->
-                TopDomainCard(td)
+                TopDomainCard(td, onClick = { onDomainClick(td.domain) })
             }
         }
 
@@ -295,8 +296,9 @@ private fun BlocksChart(
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-private fun TopDomainCard(td: TopDomain) {
+private fun TopDomainCard(td: TopDomain, onClick: () -> Unit = {}) {
     val sourceLabel = when (td.source) {
         "ai" -> "AI DGA"
         "blocklist" -> "Blocklist"
@@ -317,6 +319,7 @@ private fun TopDomainCard(td: TopDomain) {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
     ) {
         Row(
             modifier = Modifier

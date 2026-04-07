@@ -401,12 +401,22 @@ impl Vpn {
             None
         };
 
+        // Load user domain policies from Android
+        let user_allowed = file_helper.get_allowed_domains().unwrap_or_default();
+        let user_blocked = file_helper.get_blocked_domains().unwrap_or_default();
+        if !user_allowed.is_empty() || !user_blocked.is_empty() {
+            info!("run: Loaded {} user-allowed, {} user-blocked domain policies",
+                user_allowed.len(), user_blocked.len());
+        }
+
         let mut dns_packet_proxy = DnsPacketProxy::new(
             &socket_protector,
             block_logger,
             rule_database,
             ai_classifier,
             is_block_trackers_enabled,
+            user_allowed,
+            user_blocked,
             dns_servers
                 .iter()
                 .filter_map(|container| match &container.server {
