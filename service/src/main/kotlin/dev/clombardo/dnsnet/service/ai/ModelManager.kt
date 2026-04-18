@@ -24,11 +24,12 @@ class ModelManager @Inject constructor(
 ) {
     companion object {
         private const val MODEL_DIR = "models"
-        private const val MODEL_FILENAME = "gemma-4-e4b-q4_k_m.gguf"
+        private const val MODEL_FILENAME = "gemma-3-4b-it-q4_k_m.gguf"
         private const val MODEL_URL =
-            "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf"
-        private const val MODEL_SIZE_BYTES = 2_500_000_000L
+            "https://huggingface.co/unsloth/gemma-3-4b-it-GGUF/resolve/main/gemma-3-4b-it-Q4_K_M.gguf"
+        private const val MODEL_SIZE_BYTES = 2_900_000_000L
         private const val BUFFER_SIZE = 8192
+        const val MODEL_DISPLAY_NAME = "Gemma 3 4B"
     }
 
     sealed class DownloadState {
@@ -57,7 +58,11 @@ class ModelManager @Inject constructor(
         return if (file.exists()) file.absolutePath else null
     }
 
-    fun getModelSizeDescription(): String = "~2.5 GB"
+    fun getModelSizeDescription(): String = "~2.9 GB"
+
+    fun redownloadModel() {
+        deleteModel()
+    }
 
     suspend fun startDownload() = withContext(Dispatchers.IO) {
         if (_state.value is DownloadState.Downloading) return@withContext

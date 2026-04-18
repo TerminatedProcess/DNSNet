@@ -101,5 +101,5 @@ If asked about blocking ads in social media apps like Facebook or TikTok, explai
 
     override fun isAvailable(): Boolean = modelManager.isModelReady()
 
-    override fun name(): String = "Gemma 4 E4B (On-Device)"
+    override fun name(): String = "${ModelManager.MODEL_DISPLAY_NAME} (On-Device)"
 }

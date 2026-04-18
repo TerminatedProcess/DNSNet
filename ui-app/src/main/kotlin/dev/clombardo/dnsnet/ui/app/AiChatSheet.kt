@@ -306,10 +306,22 @@ private fun ModelDownloadCard(
                             )
                             Spacer(Modifier.height(2.dp))
                             Text(
-                                "Gemma 4 E4B (Q4_K_M)",
+                                "${ModelManager.MODEL_DISPLAY_NAME} (Q4_K_M)",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
                             )
+                        }
+                        OutlinedButton(
+                            onClick = { onDelete(); onDownload() },
+                            modifier = Modifier.padding(start = 8.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.Download,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text("Re-download", style = MaterialTheme.typography.bodySmall)
                         }
                         IconButton(onClick = onDelete) {
                             Icon(
@@ -394,14 +406,12 @@ fun AiChatSheet(
                 }
             }
 
-            // Model download card (shown when not ready)
-            if (modelState !is ModelManager.DownloadState.Ready) {
-                ModelDownloadCard(
-                    downloadState = modelState,
-                    onDownload = { vm.startModelDownload() },
-                    onDelete = { vm.deleteModel() },
-                )
-            }
+            // Model download/status card
+            ModelDownloadCard(
+                downloadState = modelState,
+                onDownload = { vm.startModelDownload() },
+                onDelete = { vm.deleteModel() },
+            )
 
             // Message list
             val listState = rememberLazyListState()
