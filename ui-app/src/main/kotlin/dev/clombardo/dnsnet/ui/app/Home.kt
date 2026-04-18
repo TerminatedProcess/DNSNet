@@ -31,6 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Filter1
@@ -81,6 +82,7 @@ import dev.clombardo.dnsnet.settings.FilterFile
 import dev.clombardo.dnsnet.settings.FilterState
 import dev.clombardo.dnsnet.settings.SingleFilter
 import dev.clombardo.dnsnet.ui.app.viewmodel.HomeViewModel
+import dev.clombardo.dnsnet.ui.app.viewmodel.TroubleshootViewModel
 import dev.clombardo.dnsnet.ui.common.BasicDialog
 import dev.clombardo.dnsnet.ui.common.DialogButton
 import dev.clombardo.dnsnet.ui.common.FabState
@@ -101,7 +103,8 @@ enum class HomeDestinationIcon(val icon: ImageVector) {
     Filters(Icons.Default.FilterAlt),
     Apps(Icons.Default.Android),
     DNS(Icons.Default.Dns),
-    Dashboard(Icons.Default.Dashboard);
+    Dashboard(Icons.Default.Dashboard),
+    Troubleshoot(Icons.Default.Build);
 }
 
 @Parcelize
@@ -112,7 +115,7 @@ open class HomeDestination(
 ) : Parcelable
 
 object HomeDestinations {
-    val entries = listOf(Start, Filters, Apps, DNS, Dashboard)
+    val entries = listOf(Start, Filters, Apps, DNS, Dashboard, Troubleshoot)
 
     @Parcelize
     @Serializable
@@ -133,6 +136,10 @@ object HomeDestinations {
     @Parcelize
     @Serializable
     data object Dashboard : HomeDestination(HomeDestinationIcon.Dashboard, R.string.dashboard_tab)
+
+    @Parcelize
+    @Serializable
+    data object Troubleshoot : HomeDestination(HomeDestinationIcon.Troubleshoot, R.string.troubleshoot_tab)
 }
 
 @Parcelize
@@ -169,10 +176,6 @@ sealed class TopLevelDestination : Parcelable {
     @Parcelize
     @Serializable
     data class ThreatDetail(val domain: String) : TopLevelDestination()
-
-    @Parcelize
-    @Serializable
-    data object Troubleshoot : TopLevelDestination()
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -521,15 +524,6 @@ fun App(
                     onReloadVpn = { vm.reconnectVpn() },
                 )
             }
-            composable<TopLevelDestination.Troubleshoot> { backstackEntry ->
-                val troubleshootVm: dev.clombardo.dnsnet.ui.app.viewmodel.TroubleshootViewModel =
-                    androidx.hilt.navigation.compose.hiltViewModel()
-                TroubleshootScreen(
-                    vm = troubleshootVm,
-                    onNavigateUp = { navController.tryPopBackstack(backstackEntry.id) },
-                    onReloadVpn = { vm.reconnectVpn() },
-                )
-            }
         }
     }
 }
@@ -820,9 +814,6 @@ fun HomeScreen(
                     onToggleAi = { vm.onToggleAi() },
                     blockTrackers = blockTrackers,
                     onToggleBlockTrackers = { vm.onToggleBlockTrackers() },
-                    onTroubleshoot = {
-                        topLevelNavController.navigate(TopLevelDestination.Troubleshoot)
-                    },
                     onImport = onImport,
                     onExport = onExport,
                     isWritingLogcat = isWritingLogcat,
@@ -940,6 +931,14 @@ fun HomeScreen(
                     onDomainClick = { domain ->
                         topLevelNavController.navigate(TopLevelDestination.ThreatDetail(domain))
                     },
+                )
+            }
+            composable<HomeDestinations.Troubleshoot> {
+                val troubleshootVm: TroubleshootViewModel =
+                    androidx.hilt.navigation.compose.hiltViewModel()
+                TroubleshootScreen(
+                    vm = troubleshootVm,
+                    onReloadVpn = { vm.reconnectVpn() },
                 )
             }
         }

@@ -123,6 +123,7 @@
     <string name="block_log">Block log</string>
     <string name="block_log_description">Record each connection to view and analyze</string>
     <string name="dashboard_tab">Dashboard</string>
+    <string name="troubleshoot_tab">AI Fix</string>
     <string name="ai_classification">AI classification</string>
     <string name="ai_classification_description">Use AI to detect and block malware domains (DGA) that bypass static blocklists</string>
     <string name="block_trackers">Block known trackers</string>

@@ -87,12 +87,24 @@ class TroubleshootViewModel @Inject constructor(
     }
 
     fun sendMessage(text: String) {
-        val ctx = troubleshootContext ?: return
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             val userMsg = ChatMessage("user", text)
             val currentMessages = _messages.value + userMsg
             _messages.value = currentMessages
+
+            // Refresh context with latest data
+            val appName = troubleshootContext?.appName ?: "Unknown"
+            val recentBlocks = threatLog.recentBlocks(minutes = 10)
+            val recentAllowed = threatLog.recentAllowed(minutes = 10)
+            val ctx = TroubleshootContext(
+                appName = appName,
+                recentBlocks = recentBlocks.map { rb ->
+                    BlockedDomain(rb.domain, rb.source, rb.count, rb.maxConfidence)
+                },
+                recentAllowed = recentAllowed,
+            )
+            troubleshootContext = ctx
 
             val response = provider.chat(currentMessages, ctx)
             _messages.value = currentMessages + ChatMessage("assistant", response)

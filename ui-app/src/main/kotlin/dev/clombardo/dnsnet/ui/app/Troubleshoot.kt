@@ -60,7 +60,7 @@ import dev.clombardo.dnsnet.ui.app.viewmodel.TroubleshootViewModel
 @Composable
 fun TroubleshootScreen(
     vm: TroubleshootViewModel,
-    onNavigateUp: () -> Unit,
+    onNavigateUp: (() -> Unit)? = null,
     onReloadVpn: () -> Unit,
 ) {
     val messages by vm.messages.collectAsState()
@@ -74,13 +74,17 @@ fun TroubleshootScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.troubleshoot_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateUp) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                navigationIcon = if (onNavigateUp != null) {
+                    {
+                        IconButton(onClick = onNavigateUp) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back"
+                            )
+                        }
                     }
+                } else {
+                    {}
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
