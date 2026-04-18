@@ -1,2 +1,3 @@
-source /home/dev/work/dnsai/DNSNet/.salias_f
+set -gx PROJ_DIR (dirname (status filename))
+source $PROJ_DIR/.salias_f
 help

@@ -21,7 +21,8 @@ DEPLOY
 DEVICE
   devices           List connected devices
   mirror            Launch scrcpy
-  logcat            Filtered app logs (VPN, rules, filter)
+  logcat            Filtered app logs (VPN, rules, AI)
+  logcatai          AI classifier logs only
   logcatall         All logs mentioning app
   cleardata         Wipe app data on phone
 
@@ -31,6 +32,13 @@ APK INFO
 
 TOOLCHAIN
   checkenv          Verify Java, Rust, NDK, SDK setup
+
+TESTING
+  testrust          Run Rust AI classifier tests
+  testall           Run all Rust tests
+
+ML
+  train             Retrain DGA classifier model
 
 GRADLE
   tasks             List build-related Gradle tasks

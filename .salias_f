@@ -5,10 +5,10 @@
 set -gx JAVA_HOME /usr/lib/jvm/java-21-openjdk
 set -gx ANDROID_HOME $HOME/Android/Sdk
 set -gx ANDROID_NDK_HOME $ANDROID_HOME/ndk/29.0.14206865
-set -gx PATH $ANDROID_HOME/platform-tools $ANDROID_HOME/cmdline-tools/latest/bin $PATH
+set -gx PATH $HOME/.cargo/bin $ANDROID_HOME/platform-tools $ANDROID_HOME/cmdline-tools/latest/bin $PATH
 
 # ── Help ──
-alias help='clear; cat /home/dev/work/dnsai/DNSNet/.salias_help.txt'
+alias help='clear; cat $PROJ_DIR/.salias_help.txt'
 
 # ── Build ──
 function build
@@ -28,7 +28,7 @@ function rebuild
 end
 
 function buildrust
-    cd /home/dev/work/dnsai/DNSNet/service && cargo build --release && cd -
+    cd $PROJ_DIR/service && cargo build --release && cd -
 end
 
 # ── Install / Deploy ──
@@ -59,11 +59,15 @@ function mirror
 end
 
 function logcat
-    adb logcat -s "DnsNetVpnService:*" "VpnThread:*" "RuleDatabaseManager:*" "FilterUtil:*" "AndroidRuntime:*" | grep -i --color=auto "dnsnet\|vpn\|rule\|filter\|FATAL\|Exception"
+    adb logcat -s "DnsNetVpnService:*" "VpnThread:*" "RuleDatabaseManager:*" "FilterUtil:*" "DNSNet Native:*" "AndroidRuntime:*" | grep -i --color=auto "dnsnet\|vpn\|rule\|filter\|classifier\|ai\|dga\|FATAL\|Exception"
 end
 
 function logcatall
     adb logcat | grep -i --color=auto "dnsnet\|clombardo"
+end
+
+function logcatai
+    adb logcat -s "DNSNet Native:*" | grep -i --color=auto "ai\|classifier\|dga\|blocked"
 end
 
 function cleardata
@@ -104,6 +108,20 @@ function checkenv
     echo ""
     echo "== Build Tools =="
     ls $ANDROID_HOME/build-tools/ 2>/dev/null
+end
+
+# ── Rust tests ──
+function testrust
+    cd $PROJ_DIR/service && cargo test -p net -- ai_classifier && cd -
+end
+
+function testall
+    cd $PROJ_DIR/service && cargo test && cd -
+end
+
+# ── ML pipeline ──
+function train
+    cd $PROJ_DIR/../ml && source .venv/bin/activate && python dga_classifier.py && cd -
 end
 
 # ── Gradle helpers ──

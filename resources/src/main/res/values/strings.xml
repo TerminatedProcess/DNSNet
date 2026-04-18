@@ -123,7 +123,6 @@
     <string name="block_log">Block log</string>
     <string name="block_log_description">Record each connection to view and analyze</string>
     <string name="dashboard_tab">Dashboard</string>
-    <string name="troubleshoot_tab">AI Fix</string>
     <string name="ai_classification">AI classification</string>
     <string name="ai_classification_description">Use AI to detect and block malware domains (DGA) that bypass static blocklists</string>
     <string name="block_trackers">Block known trackers</string>
@@ -263,12 +262,18 @@
     <string name="ahash_link" translatable="false">https://github.com/tkaitchuck/aHash/tree/v0.8.12</string>
     <string name="memmap2" translatable="false">memmap2</string>
     <string name="memmap2_link" translatable="false">https://github.com/RazrFalcon/memmap2-rs</string>
-    <string name="troubleshoot_title">Troubleshoot</string>
-    <string name="troubleshoot_description">App not working? AI can help fix it</string>
-    <string name="troubleshoot_initial_prompt">What app isn\'t working?</string>
-    <string name="troubleshoot_type_app_name">Type an app name\u2026</string>
-    <string name="troubleshoot_analyzing">Analyzing blocked domains\u2026</string>
     <string name="troubleshoot_allow_domain">Allow %s</string>
     <string name="troubleshoot_domain_allowed">Allowed %s</string>
-    <string name="troubleshoot_send">Send</string>
+    <string name="ai_assistant">AI Assistant</string>
+    <string name="ai_send">Send</string>
+    <string name="ai_thinking">Thinking\u2026</string>
+    <string name="ai_chat_placeholder">Ask about this screen\u2026</string>
+    <string name="ai_model_not_downloaded">AI Model Not Downloaded</string>
+    <string name="ai_model_description">Download Gemma 4 E4B (~2.5 GB) for on-device AI assistant with full conversational intelligence.</string>
+    <string name="ai_download_model">Download AI Model (~2.5 GB)</string>
+    <string name="ai_downloading_model">Downloading AI Model\u2026</string>
+    <string name="ai_model_ready">AI Model Ready</string>
+    <string name="ai_model_error">Download Failed</string>
+    <string name="ai_retry_download">Retry Download</string>
+    <string name="ai_delete_model">Delete Model</string>
 </resources>

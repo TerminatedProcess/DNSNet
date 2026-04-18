@@ -318,6 +318,22 @@ class Settings @Inject constructor(
             }
     }
 
+    val modelDownloadStatus = object : Setting<String>() {
+        override var value: String
+            get() = configuration.read { modelDownloadStatus }
+            set(value) {
+                configuration.edit { modelDownloadStatus = value }
+            }
+    }
+
+    val modelFilePath = object : Setting<String>() {
+        override var value: String
+            get() = configuration.read { modelFilePath }
+            set(value) {
+                configuration.edit { modelFilePath = value }
+            }
+    }
+
     private fun resetState() {
         autoStart.reset()
         filters.reset()
@@ -329,6 +345,8 @@ class Settings @Inject constructor(
         blockTrackers.reset()
         aiProviderType.reset()
         claudeApiKey.reset()
+        modelDownloadStatus.reset()
+        modelFilePath.reset()
     }
 
     suspend fun saveOutUserConfiguration(context: Context, uri: Uri) = withContext(Dispatchers.IO) {

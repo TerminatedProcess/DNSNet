@@ -15,6 +15,11 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.animateFloatAsState
@@ -31,7 +36,6 @@ import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Filter1
@@ -60,6 +64,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
@@ -81,8 +86,10 @@ import dev.clombardo.dnsnet.settings.Filter
 import dev.clombardo.dnsnet.settings.FilterFile
 import dev.clombardo.dnsnet.settings.FilterState
 import dev.clombardo.dnsnet.settings.SingleFilter
+import dev.clombardo.dnsnet.service.ai.AiContextBuilders
+import dev.clombardo.dnsnet.service.ai.ModelManager
+import dev.clombardo.dnsnet.ui.app.viewmodel.AiChatViewModel
 import dev.clombardo.dnsnet.ui.app.viewmodel.HomeViewModel
-import dev.clombardo.dnsnet.ui.app.viewmodel.TroubleshootViewModel
 import dev.clombardo.dnsnet.ui.common.BasicDialog
 import dev.clombardo.dnsnet.ui.common.DialogButton
 import dev.clombardo.dnsnet.ui.common.FabState
@@ -103,8 +110,7 @@ enum class HomeDestinationIcon(val icon: ImageVector) {
     Filters(Icons.Default.FilterAlt),
     Apps(Icons.Default.Android),
     DNS(Icons.Default.Dns),
-    Dashboard(Icons.Default.Dashboard),
-    Troubleshoot(Icons.Default.Build);
+    Dashboard(Icons.Default.Dashboard);
 }
 
 @Parcelize
@@ -115,7 +121,7 @@ open class HomeDestination(
 ) : Parcelable
 
 object HomeDestinations {
-    val entries = listOf(Start, Filters, Apps, DNS, Dashboard, Troubleshoot)
+    val entries = listOf(Start, Filters, Apps, DNS, Dashboard)
 
     @Parcelize
     @Serializable
@@ -137,9 +143,6 @@ object HomeDestinations {
     @Serializable
     data object Dashboard : HomeDestination(HomeDestinationIcon.Dashboard, R.string.dashboard_tab)
 
-    @Parcelize
-    @Serializable
-    data object Troubleshoot : HomeDestination(HomeDestinationIcon.Troubleshoot, R.string.troubleshoot_tab)
 }
 
 @Parcelize
@@ -616,9 +619,13 @@ fun HomeScreen(
         }
     }
 
+    val aiChatVm: AiChatViewModel = hiltViewModel()
+    val isAiSheetVisible by aiChatVm.isSheetVisible.collectAsState()
+
     val resources = LocalResources.current
     val firstItemFocusRequester = rememberFocusRequester()
     val fabFocusRequester = rememberFocusRequester()
+    Box(modifier = Modifier.fillMaxSize()) {
     NavigationScaffold(
         modifier = modifier,
         layoutType = if (isSmallScreen()) {
@@ -791,6 +798,12 @@ fun HomeScreen(
                     )
                 }
 
+                LaunchedEffect(aiEnabled, blockTrackers, blockLog) {
+                    aiChatVm.updateContext(
+                        AiContextBuilders.forStart(aiEnabled, blockTrackers, blockLog)
+                    )
+                }
+
                 val isWritingLogcat by vm.isWritingLogcat.collectAsState()
                 StartScreen(
                     contentPadding = contentPadding,
@@ -829,6 +842,12 @@ fun HomeScreen(
                 val refreshDaily by vm.settings.filters.automaticRefresh.collectAsState()
                 val filterFiles = vm.settings.filters.files.asList()
                 val singleFilters = vm.settings.filters.singles.asList()
+                LaunchedEffect(filterFiles.size, singleFilters.size) {
+                    aiChatVm.updateContext(
+                        AiContextBuilders.forFilters(filterFiles.size, singleFilters.size)
+                    )
+                }
+
                 FiltersScreen(
                     contentPadding = contentPadding,
                     listState = filterListState,
@@ -862,6 +881,10 @@ fun HomeScreen(
                 val isRefreshing by vm.appListRefreshing.collectAsState()
                 val allowlistDefault by vm.settings.appList.defaultMode.collectAsState()
                 val appList by vm.appList.collectAsState()
+                LaunchedEffect(appList.size) {
+                    aiChatVm.updateContext(AiContextBuilders.forApps(appList.size))
+                }
+
                 AppsScreen(
                     contentPadding = contentPadding + PaddingValues(ListPadding),
                     listState = appListState,
@@ -885,6 +908,16 @@ fun HomeScreen(
                 val dnsServers = vm.settings.dnsServers.items.asList()
                 val type by vm.settings.dnsServers.type.collectAsState()
                 val useNetworkDnsServers by vm.settings.useNetworkDnsServers.collectAsState()
+                LaunchedEffect(customDnsServers, type, dnsServers.size) {
+                    aiChatVm.updateContext(
+                        AiContextBuilders.forDns(
+                            customEnabled = customDnsServers,
+                            doh3 = type == DnsServerType.DoH3,
+                            serverCount = dnsServers.size,
+                        )
+                    )
+                }
+
                 DnsScreen(
                     contentPadding = contentPadding + PaddingValues(ListPadding) +
                             PaddingValues(bottom = DefaultFabSize + FabPadding),
@@ -916,8 +949,14 @@ fun HomeScreen(
                 val hourlyBlocks by vm.hourlyBlocks.collectAsState()
                 val topDomains by vm.topDomains.collectAsState()
 
-                androidx.compose.runtime.LaunchedEffect(Unit) {
+                LaunchedEffect(Unit) {
                     vm.refreshDashboard()
+                }
+
+                LaunchedEffect(summary, topDomains) {
+                    aiChatVm.updateContext(
+                        AiContextBuilders.forDashboard(summary, topDomains)
+                    )
                 }
 
                 DashboardScreen(
@@ -933,17 +972,31 @@ fun HomeScreen(
                     },
                 )
             }
-            composable<HomeDestinations.Troubleshoot> {
-                val troubleshootVm: TroubleshootViewModel =
-                    androidx.hilt.navigation.compose.hiltViewModel()
-                TroubleshootScreen(
-                    vm = troubleshootVm,
-                    contentPadding = contentPadding + PaddingValues(
-                        dev.clombardo.dnsnet.ui.common.theme.ListPadding
-                    ),
-                    onReloadVpn = { vm.reconnectVpn() },
-                )
-            }
         }
     }
+
+    // AI FAB -- floating over all screens
+    SmallFloatingActionButton(
+        modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .padding(end = 16.dp, bottom = 88.dp),
+        onClick = { aiChatVm.showSheet() },
+        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+    ) {
+        Icon(
+            Icons.Default.Psychology,
+            contentDescription = stringResource(R.string.ai_assistant),
+        )
+    }
+
+    // AI Chat bottom sheet
+    if (isAiSheetVisible) {
+        AiChatSheet(
+            vm = aiChatVm,
+            onDismiss = { aiChatVm.hideSheet() },
+            onReloadVpn = { vm.reconnectVpn() },
+        )
+    }
+    } // close Box
 }
