@@ -938,6 +938,9 @@ fun HomeScreen(
                     androidx.hilt.navigation.compose.hiltViewModel()
                 TroubleshootScreen(
                     vm = troubleshootVm,
+                    contentPadding = contentPadding + PaddingValues(
+                        dev.clombardo.dnsnet.ui.common.theme.ListPadding
+                    ),
                     onReloadVpn = { vm.reconnectVpn() },
                 )
             }

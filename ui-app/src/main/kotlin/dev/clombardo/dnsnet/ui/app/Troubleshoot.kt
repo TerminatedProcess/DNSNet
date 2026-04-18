@@ -56,11 +56,10 @@ import androidx.compose.ui.unit.sp
 import dev.clombardo.dnsnet.service.ai.ChatMessage
 import dev.clombardo.dnsnet.ui.app.viewmodel.TroubleshootViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TroubleshootScreen(
     vm: TroubleshootViewModel,
-    onNavigateUp: (() -> Unit)? = null,
+    contentPadding: PaddingValues = PaddingValues(),
     onReloadVpn: () -> Unit,
 ) {
     val messages by vm.messages.collectAsState()
@@ -70,33 +69,12 @@ fun TroubleshootScreen(
     var appNameInput by rememberSaveable { mutableStateOf("") }
     var hasSelectedApp by rememberSaveable { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.troubleshoot_title)) },
-                navigationIcon = if (onNavigateUp != null) {
-                    {
-                        IconButton(onClick = onNavigateUp) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back"
-                            )
-                        }
-                    }
-                } else {
-                    {}
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .imePadding()
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(horizontal = 12.dp)
+            .imePadding()
         ) {
             if (!hasSelectedApp) {
                 // App selection screen
@@ -162,7 +140,6 @@ fun TroubleshootScreen(
                     onSend = { text -> vm.sendMessage(text) },
                     enabled = !isLoading,
                 )
-            }
         }
     }
 }
