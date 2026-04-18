@@ -1,5 +1,6 @@
 package dev.clombardo.dnsnet.ui.app
 
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -309,6 +310,13 @@ private fun ModelDownloadCard(
                                 "${ModelManager.MODEL_DISPLAY_NAME} (Q4_K_M)",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                            )
+                            Text(
+                                "Model located at ${(downloadState as ModelManager.DownloadState.Ready).path}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.5f),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                         OutlinedButton(
