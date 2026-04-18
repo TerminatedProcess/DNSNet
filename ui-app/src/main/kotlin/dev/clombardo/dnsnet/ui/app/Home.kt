@@ -15,9 +15,11 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.animation.ExperimentalSharedTransitionApi
@@ -975,11 +977,24 @@ fun HomeScreen(
         }
     }
 
-    // AI FAB -- floating over all screens
+    // AI FAB -- draggable, floating over all screens
+    var fabOffsetX by remember { mutableStateOf(0f) }
+    var fabOffsetY by remember { mutableStateOf(0f) }
     SmallFloatingActionButton(
         modifier = Modifier
             .align(Alignment.BottomEnd)
-            .padding(end = 16.dp, bottom = 88.dp),
+            .padding(end = 16.dp, bottom = 88.dp)
+            .graphicsLayer {
+                translationX = fabOffsetX
+                translationY = fabOffsetY
+            }
+            .pointerInput(Unit) {
+                detectDragGestures { change, dragAmount ->
+                    change.consume()
+                    fabOffsetX += dragAmount.x
+                    fabOffsetY += dragAmount.y
+                }
+            },
         onClick = { aiChatVm.showSheet() },
         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
         contentColor = MaterialTheme.colorScheme.onTertiaryContainer,

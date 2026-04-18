@@ -21,7 +21,7 @@ agp = "9.1.0"
 kotlin = "2.3.20"
 bundletool = "0.2.4"
 java = "21"
-minSdk = "24"
+minSdk = "26"
 minSdkBaselineProfile = "28"
 compileSdk = "36"
 targetSdk = "36"
@@ -46,6 +46,7 @@ graphicsShapes = "1.1.0"
 material3 = "1.5.0-alpha15"
 runtimeAndroid = "1.10.5"
 ktor = "3.4.1"
+llamatik = "0.16.0"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
@@ -70,6 +71,7 @@ atomicfu = { module = "org.jetbrains.kotlinx:atomicfu", version.ref = "atomicfu"
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coilCompose" }
 haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
+llamatik = { module = "com.llamatik:library", version.ref = "llamatik" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 materialswitch = { module = "io.github.t895:materialswitch", version.ref = "materialswitch" }
 string-similarity-kotlin = { module = "com.aallam.similarity:string-similarity-kotlin", version.ref = "stringSimilarityKotlin" }

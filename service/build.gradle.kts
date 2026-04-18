@@ -123,6 +123,8 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
 
+    implementation(libs.llamatik)
+
     implementation(libs.jna) {
         artifact {
             type = "aar"
