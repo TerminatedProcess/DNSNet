@@ -123,7 +123,8 @@ fun TroubleshootScreen(
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(messages, key = { "${it.role}:${it.hashCode()}" }) { message ->
+                    items(messages.size) { index ->
+                        val message = messages[index]
                         ChatBubble(
                             message = message,
                             allowedDomains = allowedDomains,
