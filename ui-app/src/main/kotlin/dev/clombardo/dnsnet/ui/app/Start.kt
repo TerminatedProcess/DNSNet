@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
@@ -83,6 +84,7 @@ fun StartScreen(
     onToggleAi: () -> Unit,
     blockTrackers: Boolean,
     onToggleBlockTrackers: () -> Unit,
+    onTroubleshoot: () -> Unit,
     onImport: () -> Unit,
     onExport: () -> Unit,
     isWritingLogcat: Boolean,
@@ -136,6 +138,15 @@ fun StartScreen(
                             details = stringResource(id = R.string.block_trackers_description),
                             checked = blockTrackers,
                             onCheckedChange = { onToggleBlockTrackers() },
+                        )
+                    }
+
+                    item {
+                        IconSettingButton(
+                            title = stringResource(R.string.troubleshoot_title),
+                            details = stringResource(R.string.troubleshoot_description),
+                            icon = Icons.Default.Build,
+                            onClick = onTroubleshoot,
                         )
                     }
 
@@ -280,6 +291,7 @@ private fun StartScreenPreview() {
             onToggleAi = {},
             blockTrackers = false,
             onToggleBlockTrackers = {},
+            onTroubleshoot = {},
             onImport = {},
             onExport = {},
             isWritingLogcat = false,

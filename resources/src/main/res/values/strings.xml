@@ -262,4 +262,12 @@
     <string name="ahash_link" translatable="false">https://github.com/tkaitchuck/aHash/tree/v0.8.12</string>
     <string name="memmap2" translatable="false">memmap2</string>
     <string name="memmap2_link" translatable="false">https://github.com/RazrFalcon/memmap2-rs</string>
+    <string name="troubleshoot_title">Troubleshoot</string>
+    <string name="troubleshoot_description">App not working? AI can help fix it</string>
+    <string name="troubleshoot_initial_prompt">What app isn\'t working?</string>
+    <string name="troubleshoot_type_app_name">Type an app name\u2026</string>
+    <string name="troubleshoot_analyzing">Analyzing blocked domains\u2026</string>
+    <string name="troubleshoot_allow_domain">Allow %s</string>
+    <string name="troubleshoot_domain_allowed">Allowed %s</string>
+    <string name="troubleshoot_send">Send</string>
 </resources>

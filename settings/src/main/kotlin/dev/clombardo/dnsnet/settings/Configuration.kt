@@ -117,6 +117,8 @@ data class Configuration(
     var useNetworkDnsServers: Boolean = false,
     var aiEnabled: Boolean = true,
     var blockTrackers: Boolean = false,
+    var aiProviderType: String = "heuristic",
+    var claudeApiKey: String = "",
 ) {
     companion object {
         const val DEFAULT_CONFIG_FILENAME = "settings.json"

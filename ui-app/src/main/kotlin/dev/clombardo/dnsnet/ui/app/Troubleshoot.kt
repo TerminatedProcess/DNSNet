@@ -1,0 +1,369 @@
+package dev.clombardo.dnsnet.ui.app
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import dev.clombardo.dnsnet.service.ai.ChatMessage
+import dev.clombardo.dnsnet.ui.app.viewmodel.TroubleshootViewModel
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TroubleshootScreen(
+    vm: TroubleshootViewModel,
+    onNavigateUp: () -> Unit,
+    onReloadVpn: () -> Unit,
+) {
+    val messages by vm.messages.collectAsState()
+    val isLoading by vm.isLoading.collectAsState()
+    val allowedDomains by vm.allowedDomains.collectAsState()
+
+    var appNameInput by rememberSaveable { mutableStateOf("") }
+    var hasSelectedApp by rememberSaveable { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.troubleshoot_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateUp) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .imePadding()
+        ) {
+            if (!hasSelectedApp) {
+                // App selection screen
+                AppSelectionContent(
+                    modifier = Modifier.weight(1f),
+                    appName = appNameInput,
+                    onAppNameChange = { appNameInput = it },
+                    onSubmit = {
+                        if (appNameInput.isNotBlank()) {
+                            hasSelectedApp = true
+                            vm.selectApp(appNameInput.trim())
+                        }
+                    },
+                )
+            } else {
+                // Chat screen
+                val listState = rememberLazyListState()
+
+                LaunchedEffect(messages.size) {
+                    if (messages.isNotEmpty()) {
+                        listState.animateScrollToItem(messages.size - 1)
+                    }
+                }
+
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    state = listState,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(messages, key = { "${it.role}:${it.hashCode()}" }) { message ->
+                        ChatBubble(
+                            message = message,
+                            allowedDomains = allowedDomains,
+                            onAllowDomain = { domain ->
+                                vm.allowDomain(domain)
+                                onReloadVpn()
+                            },
+                        )
+                    }
+
+                    if (isLoading) {
+                        item {
+                            Row(
+                                modifier = Modifier.padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    stringResource(R.string.troubleshoot_analyzing),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Input bar
+                ChatInputBar(
+                    onSend = { text -> vm.sendMessage(text) },
+                    enabled = !isLoading,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppSelectionContent(
+    modifier: Modifier = Modifier,
+    appName: String,
+    onAppNameChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            stringResource(R.string.troubleshoot_initial_prompt),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(16.dp))
+        OutlinedTextField(
+            modifier = Modifier.fillMaxWidth(),
+            value = appName,
+            onValueChange = onAppNameChange,
+            label = { Text(stringResource(R.string.troubleshoot_type_app_name)) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+            keyboardActions = KeyboardActions(onGo = { onSubmit() }),
+        )
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = onSubmit,
+            enabled = appName.isNotBlank(),
+        ) {
+            Text(stringResource(R.string.troubleshoot_title))
+        }
+    }
+}
+
+@Composable
+private fun ChatBubble(
+    message: ChatMessage,
+    allowedDomains: Set<String>,
+    onAllowDomain: (String) -> Unit,
+) {
+    val isUser = message.role == "user"
+
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart,
+    ) {
+        Card(
+            modifier = Modifier.widthIn(max = 320.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isUser) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                }
+            )
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                if (isUser) {
+                    Text(
+                        message.content,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontSize = 14.sp,
+                    )
+                } else {
+                    // Parse assistant message for [ALLOW:domain] markers
+                    val parts = parseAssistantMessage(message.content)
+                    for (part in parts) {
+                        when (part) {
+                            is MessagePart.TextBlock -> {
+                                if (part.text.isNotBlank()) {
+                                    Text(
+                                        part.text.trim(),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 14.sp,
+                                    )
+                                }
+                            }
+                            is MessagePart.AllowAction -> {
+                                val isAlreadyAllowed = allowedDomains.contains(part.domain)
+                                Spacer(Modifier.height(4.dp))
+                                Button(
+                                    onClick = { onAllowDomain(part.domain) },
+                                    enabled = !isAlreadyAllowed,
+                                    colors = if (isAlreadyAllowed) {
+                                        ButtonDefaults.buttonColors(
+                                            disabledContainerColor = Color(0xFF2E7D32).copy(alpha = 0.3f),
+                                            disabledContentColor = Color(0xFF2E7D32),
+                                        )
+                                    } else {
+                                        ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF2E7D32),
+                                            contentColor = Color.White,
+                                        )
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                ) {
+                                    if (isAlreadyAllowed) {
+                                        Icon(
+                                            Icons.Filled.CheckCircle,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            stringResource(R.string.troubleshoot_domain_allowed, part.domain),
+                                            fontSize = 12.sp,
+                                            fontFamily = FontFamily.Monospace,
+                                        )
+                                    } else {
+                                        Text(
+                                            stringResource(R.string.troubleshoot_allow_domain, part.domain),
+                                            fontSize = 12.sp,
+                                            fontFamily = FontFamily.Monospace,
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.height(4.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChatInputBar(
+    onSend: (String) -> Unit,
+    enabled: Boolean,
+) {
+    var text by rememberSaveable { mutableStateOf("") }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OutlinedTextField(
+            modifier = Modifier.weight(1f),
+            value = text,
+            onValueChange = { text = it },
+            singleLine = true,
+            enabled = enabled,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+            keyboardActions = KeyboardActions(onSend = {
+                if (text.isNotBlank()) {
+                    onSend(text.trim())
+                    text = ""
+                }
+            }),
+        )
+        Spacer(Modifier.width(8.dp))
+        IconButton(
+            onClick = {
+                if (text.isNotBlank()) {
+                    onSend(text.trim())
+                    text = ""
+                }
+            },
+            enabled = enabled && text.isNotBlank(),
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.Send,
+                contentDescription = stringResource(R.string.troubleshoot_send),
+            )
+        }
+    }
+}
+
+// Message parsing
+
+private sealed class MessagePart {
+    data class TextBlock(val text: String) : MessagePart()
+    data class AllowAction(val domain: String) : MessagePart()
+}
+
+private val ALLOW_PATTERN = Regex("""\[ALLOW:([^\]]+)]""")
+
+private fun parseAssistantMessage(content: String): List<MessagePart> {
+    val parts = mutableListOf<MessagePart>()
+    var lastIndex = 0
+
+    for (match in ALLOW_PATTERN.findAll(content)) {
+        val before = content.substring(lastIndex, match.range.first)
+        if (before.isNotEmpty()) {
+            parts.add(MessagePart.TextBlock(before))
+        }
+        parts.add(MessagePart.AllowAction(match.groupValues[1]))
+        lastIndex = match.range.last + 1
+    }
+
+    val remaining = content.substring(lastIndex)
+    if (remaining.isNotEmpty()) {
+        parts.add(MessagePart.TextBlock(remaining))
+    }
+
+    return parts
+}

@@ -48,6 +48,7 @@ dependencies {
     implementation(project(":settings"))
     implementation(project(":common"))
     implementation(project(":blocklogger"))
+    implementation(project(":service"))
 }
 
 aboutLibraries {

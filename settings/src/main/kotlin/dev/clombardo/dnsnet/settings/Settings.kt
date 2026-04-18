@@ -302,6 +302,22 @@ class Settings @Inject constructor(
             }
     }
 
+    val aiProviderType = object : Setting<String>() {
+        override var value: String
+            get() = configuration.read { aiProviderType }
+            set(value) {
+                configuration.edit { aiProviderType = value }
+            }
+    }
+
+    val claudeApiKey = object : Setting<String>() {
+        override var value: String
+            get() = configuration.read { claudeApiKey }
+            set(value) {
+                configuration.edit { claudeApiKey = value }
+            }
+    }
+
     private fun resetState() {
         autoStart.reset()
         filters.reset()
@@ -311,6 +327,8 @@ class Settings @Inject constructor(
         useNetworkDnsServers.reset()
         aiEnabled.reset()
         blockTrackers.reset()
+        aiProviderType.reset()
+        claudeApiKey.reset()
     }
 
     suspend fun saveOutUserConfiguration(context: Context, uri: Uri) = withContext(Dispatchers.IO) {

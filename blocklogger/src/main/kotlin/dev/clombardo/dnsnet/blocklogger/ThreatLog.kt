@@ -140,6 +140,59 @@ class ThreatLog private constructor(context: Context) :
         return result
     }
 
+    // ── Troubleshoot Queries ──
+
+    /**
+     * Returns domains blocked within the last [minutes] minutes,
+     * grouped by domain, sorted by hit count descending.
+     */
+    fun recentBlocks(minutes: Int = 5): List<RecentBlock> {
+        val since = System.currentTimeMillis() - minutes * 60 * 1000L
+        val db = readableDatabase
+        val result = mutableListOf<RecentBlock>()
+
+        db.rawQuery("""
+            SELECT domain, source, COUNT(*) AS cnt, MAX(confidence) AS max_conf
+            FROM $TABLE_EVENTS
+            WHERE action = 'blocked' AND timestamp >= ?
+            GROUP BY domain
+            ORDER BY cnt DESC
+        """, arrayOf(since.toString())).use { c ->
+            while (c.moveToNext()) {
+                result.add(
+                    RecentBlock(
+                        domain = c.getString(0),
+                        source = c.getString(1),
+                        count = c.getInt(2),
+                        maxConfidence = c.getFloat(3),
+                    )
+                )
+            }
+        }
+        return result
+    }
+
+    /**
+     * Returns domains allowed within the last [minutes] minutes (distinct).
+     */
+    fun recentAllowed(minutes: Int = 5): List<String> {
+        val since = System.currentTimeMillis() - minutes * 60 * 1000L
+        val db = readableDatabase
+        val result = mutableListOf<String>()
+
+        db.rawQuery("""
+            SELECT DISTINCT domain
+            FROM $TABLE_EVENTS
+            WHERE action = 'allowed' AND timestamp >= ?
+            ORDER BY domain ASC
+        """, arrayOf(since.toString())).use { c ->
+            while (c.moveToNext()) {
+                result.add(c.getString(0))
+            }
+        }
+        return result
+    }
+
     // ── Domain Detail Queries ──
 
     fun domainDetail(domain: String): DomainDetail? {
@@ -322,6 +375,13 @@ data class TopDomain(
     val domain: String,
     val source: String,
     val action: String,
+    val count: Int,
+    val maxConfidence: Float,
+)
+
+data class RecentBlock(
+    val domain: String,
+    val source: String,
     val count: Int,
     val maxConfidence: Float,
 )

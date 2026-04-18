@@ -169,6 +169,10 @@ sealed class TopLevelDestination : Parcelable {
     @Parcelize
     @Serializable
     data class ThreatDetail(val domain: String) : TopLevelDestination()
+
+    @Parcelize
+    @Serializable
+    data object Troubleshoot : TopLevelDestination()
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -517,6 +521,15 @@ fun App(
                     onReloadVpn = { vm.reconnectVpn() },
                 )
             }
+            composable<TopLevelDestination.Troubleshoot> { backstackEntry ->
+                val troubleshootVm: dev.clombardo.dnsnet.ui.app.viewmodel.TroubleshootViewModel =
+                    androidx.hilt.navigation.compose.hiltViewModel()
+                TroubleshootScreen(
+                    vm = troubleshootVm,
+                    onNavigateUp = { navController.tryPopBackstack(backstackEntry.id) },
+                    onReloadVpn = { vm.reconnectVpn() },
+                )
+            }
         }
     }
 }
@@ -807,6 +820,9 @@ fun HomeScreen(
                     onToggleAi = { vm.onToggleAi() },
                     blockTrackers = blockTrackers,
                     onToggleBlockTrackers = { vm.onToggleBlockTrackers() },
+                    onTroubleshoot = {
+                        topLevelNavController.navigate(TopLevelDestination.Troubleshoot)
+                    },
                     onImport = onImport,
                     onExport = onExport,
                     isWritingLogcat = isWritingLogcat,
