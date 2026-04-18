@@ -302,7 +302,8 @@ fun NoticeScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(16.dp)
+                        .padding(bottom = 48.dp),
                     contentAlignment = Alignment.TopEnd,
                 ) {
                     Button(
